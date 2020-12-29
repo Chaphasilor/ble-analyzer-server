@@ -1,0 +1,169 @@
+[
+  {
+    "_index": "packets-2020-01-10",
+    "_type": "doc",
+    "_score": null,
+    "_source": {
+      "layers": {
+        "frame": {
+          "frame.interface_id": "0",
+          "frame.interface_id_tree": {
+            "frame.interface_name": "-"
+          },
+          "frame.encap_type": "186",
+          "frame.time": "Jan 10, 2020 11:09:27.385433000 W. Europe Standard Time",
+          "frame.offset_shift": "0.000000000",
+          "frame.time_epoch": "1578650967.385433000",
+          "frame.time_delta": "0.021673000",
+          "frame.time_delta_displayed": "0.021673000",
+          "frame.time_relative": "205.770828000",
+          "frame.number": "9756",
+          "frame.len": "62",
+          "frame.cap_len": "62",
+          "frame.marked": "0",
+          "frame.ignored": "0",
+          "frame.protocols": "nordic_ble:btle:btcommon"
+        },
+        "nordic_ble": {
+          "nordic_ble.board_id": "75",
+          "nordic_ble.header": {
+            "nordic_ble.plen": "55",
+            "nordic_ble.protover": "2",
+            "nordic_ble.packet_counter": "0",
+            "nordic_ble.packet_id": "0"
+          },
+          "nordic_ble.len": "10",
+          "nordic_ble.flags": "0x00000001",
+          "nordic_ble.flags_tree": {
+            "nordic_ble.crcok": "1",
+            "nordic_ble.aux_type": "0",
+            "nordic_ble.flag_reserved3": "0",
+            "nordic_ble.phy": "0",
+            "nordic_ble.flag_reserved7": "0"
+          },
+          "nordic_ble.channel": "0",
+          "nordic_ble.rssi": "0",
+          "nordic_ble.event_counter": "232",
+          "nordic_ble.delta_time": "0",
+          "nordic_ble.delta_time_ss": "240",
+          "nordic_ble.packet_time": "368"
+        },
+        "btle": {
+          "btle.access_address": "0x8e89bed6",
+          "btle.advertising_header": "0x00002440",
+          "btle.advertising_header_tree": {
+            "btle.advertising_header.pdu_type": "0x00000000",
+            "btle.advertising_header.rfu.1": "0",
+            "btle.advertising_header.ch_sel": "0",
+            "btle.advertising_header.randomized_tx": "1",
+            "btle.advertising_header.rfu.4": "0",
+            "btle.advertising_header.length": "36"
+          },
+          "btle.length": "36",
+          "btle.advertising_address": "f7:b5:e6:89:1e:ae",
+          "btcommon.eir_ad.advertising_data": {
+            "btcommon.eir_ad.entry": {
+              "btcommon.eir_ad.entry.length": "2",
+              "btcommon.eir_ad.entry.type": "9",
+              "btcommon.eir_ad.entry.device_name": "s"
+            }
+          },
+          "btle.crc": "0x00f3b9ce"
+        }
+      }
+    }
+  },
+  {
+    "_index": "packets-2020-01-10",
+    "_type": "doc",
+    "_score": null,
+    "_source": {
+      "layers": {
+        "frame": {
+          "frame.interface_id": "0",
+          "frame.interface_id_tree": {
+            "frame.interface_name": "-"
+          },
+          "frame.encap_type": "186",
+          "frame.time": "Jan 10, 2020 11:09:12.224274000 W. Europe Standard Time",
+          "frame.offset_shift": "0.000000000",
+          "frame.time_epoch": "1578650952.224274000",
+          "frame.time_delta": "0.021624000",
+          "frame.time_delta_displayed": "0.021624000",
+          "frame.time_relative": "190.609669000",
+          "frame.number": "8928",
+          "frame.len": "50",
+          "frame.cap_len": "50",
+          "frame.marked": "0",
+          "frame.ignored": "0",
+          "frame.protocols": "nordic_ble:btle:btl2cap:btatt"
+        },
+        "nordic_ble": {
+          "nordic_ble.board_id": "75",
+          "nordic_ble.header": {
+            "nordic_ble.plen": "43",
+            "nordic_ble.protover": "2",
+            "nordic_ble.packet_counter": "0",
+            "nordic_ble.packet_id": "0"
+          },
+          "nordic_ble.len": "10",
+          "nordic_ble.flags": "0x00000001",
+          "nordic_ble.flags_tree": {
+            "nordic_ble.crcok": "1",
+            "nordic_ble.direction": "0",
+            "nordic_ble.encrypted": "0",
+            "nordic_ble.mic_not_relevant": "0",
+            "nordic_ble.phy": "0",
+            "nordic_ble.flag_reserved7": "0"
+          },
+          "nordic_ble.channel": "0",
+          "nordic_ble.rssi": "0",
+          "nordic_ble.event_counter": "9",
+          "nordic_ble.delta_time": "0",
+          "nordic_ble.delta_time_ss": "80",
+          "nordic_ble.packet_time": "272"
+        },
+        "btle": {
+          "btle.access_address": "0x9a328370",
+          "btle.master_bd_addr": "5d:36:ac:90:0b:22",
+          "btle.slave_bd_addr": "00:a0:50:00:00:03",
+          "btle.data_header": "0x00001806",
+          "btle.data_header_tree": {
+            "btle.data_header.llid": "2",
+            "btle.data_header.next_expected_sequence_number": "1",
+            "btle.data_header.sequence_number": "0",
+            "btle.data_header.more_data": "0",
+            "btle.data_header.rfu": "0",
+            "btle.data_header.length": "24"
+          },
+          "btle.length": "24",
+          "btle.l2cap_index": "908",
+          "btle.crc": "0x00b9d744"
+        },
+        "btl2cap": {
+          "btl2cap.length": "20",
+          "btl2cap.cid": "4"
+        },
+        "btatt": {
+          "btatt.opcode": "0x00000011",
+          "btatt.opcode_tree": {
+            "btatt.opcode.authentication_signature": "0",
+            "btatt.opcode.command": "0",
+            "btatt.opcode.method": "0x00000011"
+          },
+          "btatt.length": "6",
+          "btatt.attribute_data": {
+            "btatt.handle": "0x0000000e",
+            "btatt.handle_tree": {
+              "btatt.uuid16": "6146"
+            },
+            "btatt.group_end_handle": "0x00000010",
+            "btatt.uuid16": "6146"
+          },
+          "btatt.uuid16": "10240",
+          "btatt.request_in_frame": "8926"
+        }
+      }
+    }
+  }
+]

@@ -16,6 +16,16 @@
     {
       "type": "pwa-node",
       "request": "launch",
+      "name": "Debug with dummy data",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "${workspaceFolder}\\index.js",
+      "args": ["${workspaceFolder}\\..\\capture_cypress_psoc6_crash_llid.pcapng"]
+    },
+    {
+      "type": "pwa-node",
+      "request": "launch",
       "name": "Debug parse.js",
       "skipFiles": [
         "<node_internals>/**"
