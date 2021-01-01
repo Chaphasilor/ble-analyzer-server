@@ -1,6 +1,6 @@
 {
-  "name": "ble-analyzer-gui",
-  "version": "0.1.0",
+  "name": "ble-analyzer-server",
+  "version": "0.5.0",
   "description": "A tool for inspecting and analyzing Bluetooth Low Energy (BLE) packet streams",
   "main": "index.js",
   "scripts": {
