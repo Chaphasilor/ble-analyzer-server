@@ -36,7 +36,10 @@ module.exports =  class Parser extends EventEmitter {
     });
     
     this.pipeline.on(`close`, () => {
+
       console.log(`Done`)
+      this.emit(`end`)
+      
     })
     
   }

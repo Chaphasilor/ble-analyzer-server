@@ -12,12 +12,26 @@ connection.on(`ready`, () => {
   console.log(`Connection with GUI established`)
 
   let parser = new PacketParser()
+  let sendBuffer = []
 
   parser.on(`packet`, (packet) => {
 
     packetBuffer.push(packet)
     let simplePacket = Interpret.packet(packet)
-    connection.send(simplePacket)
+    sendBuffer.push(simplePacket)
+
+    if (sendBuffer.length >= 1000) {
+      connection.send(sendBuffer)
+      sendBuffer = []
+    }
+
+    
+  })
+
+  parser.on(`end`, () => {
+
+    connection.send(sendBuffer)
+    sendBuffer = []
     
   })
   
