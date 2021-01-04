@@ -3,6 +3,10 @@ function packet(originalPacket, format) {
   try {
 
     switch (format) {
+      case `full`:
+
+        return originalPacket._source
+
       default: // simple format
       
         return {

@@ -24,9 +24,26 @@ module.exports = class GuiConnection extends EventEmitter {
       
       socket.on(`message`, (data) => {
     
+        let parsed
+        try {
+          parsed = JSON.parse(data)
+        } catch (err) {
+          console.error(`err:`, err);
+        }
+        
         console.log(`data:`, data)
-        socket.send(`Received: ${data}`)
-        this.emit(`message`, data)
+        
+        switch (parsed.type) {
+          case `command`:
+            this.emit(`command`, parsed.value)
+            break;
+        
+          default:
+            console.error(`Unrecognized message type:`, parsed.type)
+            break;
+        }
+        
+        // this.emit(`message`, data)
     
       })
     

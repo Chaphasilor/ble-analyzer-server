@@ -14,6 +14,50 @@ connection.on(`ready`, () => {
   let parser = new PacketParser()
   let sendBuffer = []
 
+  connection.on(`command`, (command) => {
+
+    console.log(`Received command from GUI:`, command)
+  
+    switch (command[0]) {
+      case `sendAll`:
+        connection.send(packetBuffer.map(packet => Interpret.packet(packet))) // sends all packets inside the packetBuffer in simple format
+        break;
+      case `send`:
+
+        if (!(command[1] >= 0)) {
+          connection.send({
+            type: `error`,
+            value: `Missing packet ID while requesting specific packet!`,
+          })
+        }
+
+        let foundPacket = packetBuffer.toArray().find(packet => {
+          return Number(packet._source.layers.frame[`frame.number`]) == command[1]
+        })
+
+        if (foundPacket) {
+
+          console.log(`foundPacket:`, foundPacket);
+          connection.send(Interpret.packet(foundPacket, `full`))
+          
+        } else {
+
+          console.log(`Requested packet not found!`)
+          connection.send({
+            type: `error`,
+            value: `Packet with id ${command[1]} not found!`,
+          })
+
+        }
+      
+        break;
+    
+      default:
+        break;
+    }
+    
+  })
+
   parser.on(`packet`, (packet) => {
 
     packetBuffer.push(packet)
@@ -37,6 +81,3 @@ connection.on(`ready`, () => {
   
 })
 
-connection.on(`message`, (data) => {
-  console.log(`Recieved message from GUI:`, data)
-})
