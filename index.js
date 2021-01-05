@@ -38,7 +38,7 @@ connection.on(`ready`, () => {
         if (foundPacket) {
 
           console.log(`foundPacket:`, foundPacket);
-          connection.send(Interpret.packet(foundPacket, `full`))
+          connection.send(Interpret.packet(foundPacket, command[2]))
           
         } else {
 
@@ -51,6 +51,15 @@ connection.on(`ready`, () => {
         }
       
         break;
+
+      case `count`:
+
+        let count = packetBuffer.toArray().filter(packet => {
+          // console.log(`packet._source.layers.nordic_ble:`, packet._source.layers.nordic_ble);
+          return Number(packet._source.layers.btle[`btle.`]) !== 0
+        }).length
+
+        connection.send(`Packets with channel != 0: ${count}`)
     
       default:
         break;
