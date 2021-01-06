@@ -55,6 +55,7 @@ module.exports = class GuiConnection extends EventEmitter {
 
         this.sockets.pop()
         console.log(`Socket closed with code ${code}, reason:`, reason)
+        this.emit(`close`)
 
       })
       
