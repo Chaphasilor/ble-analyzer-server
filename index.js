@@ -23,18 +23,47 @@ function handleCommand(command) {
 
   console.log(`Received command from GUI:`, command)
 
+  let end = () => {
+    return {
+      type: `commandEnd`,
+      value: [
+        command[0],
+      ]
+    }
+  }
+  
+  let response = (payload) => {
+    return {
+      type: `response`,
+      value: [
+        command[0],
+        payload,
+      ]
+    }
+  }
+
+  let error = (reason) => {
+    return {
+      type: `error`,
+      value: [
+        command[0],
+        reason,
+      ]
+    }
+  }
+
   switch (command[0]) {
     case `sendAll`:
+
       console.log(`parser.packetBuffer.toArray().length:`, parser.packetBuffer.toArray().length);
-      connection.send(parser.packetBuffer.toArray().map(packet => Interpret.packet(packet))) // sends all packets inside the parser.packetBuffer in simple format
+      connection.send(response(parser.packetBuffer.toArray().map(packet => Interpret.packet(packet)))) // sends all packets inside the parser.packetBuffer in simple format
+      connection.send(end())
+      
       break;
     case `send`:
 
       if (!(command[1] >= 0)) {
-        connection.send({
-          type: `error`,
-          value: `Missing packet ID while requesting specific packet!`,
-        })
+        connection.send(error(`Missing packet ID while requesting specific packet!`))
       }
 
       let foundPacket = parser.packetBuffer.toArray().find(packet => {
@@ -44,35 +73,22 @@ function handleCommand(command) {
       if (foundPacket) {
 
         console.log(`foundPacket:`, foundPacket);
-        connection.send(Interpret.packet(foundPacket, command[2]))
+        connection.send(response(Interpret.packet(foundPacket, command[2])))
+        connection.send(end())
         
       } else {
 
         console.log(`Requested packet not found!`)
-        connection.send({
-          type: `error`,
-          value: `Packet with id ${command[1]} not found!`,
-        })
+        connection.send(error(`Packet with id ${command[1]} not found!`))
 
       }
     
       break;
 
-    case `count`:
-
-      let count = parser.packetBuffer.toArray().filter(packet => {
-        // console.log(`packet._source.layers.nordic_ble:`, packet._source.layers.nordic_ble);
-        return Number(packet._source.layers.btle[`btle.`]) !== 0
-      }).length
-
-      connection.send(`Packets with channel != 0: ${count}`)
-      
-      break;
-
     case `live`:
 
-      parser.off(`packet`, sendPacketSummary)
-      parser.on(`packet`, sendPacketSummary)
+      parser.off(`packet`, sendLivePacketSummary) // make sure any previous handler is removed before attaching a new handler
+      parser.on(`packet`, sendLivePacketSummary)
 
       break;
   
@@ -82,9 +98,15 @@ function handleCommand(command) {
   
 }
 
-function sendPacketSummary(packet) {
+function sendLivePacketSummary(packet) {
 
   let simplePacket = Interpret.packet(packet)
-  connection.send([simplePacket])
+  connection.send({
+    type: `response`,
+    value: [
+      `live`,
+      [simplePacket],
+    ]
+  })
   
 }

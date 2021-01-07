@@ -91,6 +91,7 @@ function getPacketInfo(originalPacket) {
   return {
     packetId: Number(layers.frame[`frame.number`]),
     microseconds: Number(layers.frame[`frame.time_epoch`].slice(0, -3).split(`.`).join(``)),
+    channel: Number(layers.nordic_ble[`nordic_ble.channel`]),
     source,
     destination,
     protocols: layers.frame[`frame.protocols`].split(`:`).map(protocolName => {
