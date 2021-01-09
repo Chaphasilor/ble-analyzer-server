@@ -97,7 +97,7 @@ function getPacketInfo(originalPacket) {
     channel: Number(layers.nordic_ble[`nordic_ble.channel`]),
     source,
     destination,
-    protocols: layers.frame[`frame.protocols`].split(`:`).map(protocolName => {
+    protocols: layers.frame[`frame.protocols`].split(`:`).filter(x => x !== `btcommon`).map(protocolName => {
 
       switch (protocolName) {
         case `btle`:
@@ -171,7 +171,7 @@ function getPacketInfo(originalPacket) {
             confirmValue: layers.btsmp[`btsmp.cfm_value`],
           }
           break;
-      
+
         default:
           return {
             name: `<unknown protocol> (${protocolName})`
