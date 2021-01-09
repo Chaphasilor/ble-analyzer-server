@@ -2,12 +2,15 @@ const StreamArray = require('stream-json/streamers/StreamArray');
 const fs = require('fs');
 const { spawn } = require(`child_process`)
 const EventEmitter = require(`events`)
+const CBuffer = require(`cbuffer`)
 
-module.exports =  class Parser extends EventEmitter {
+module.exports = class Parser extends EventEmitter {
 
   constructor() {
 
     super()
+
+    this.packetBuffer = new CBuffer(100000) // only remember the last 100000 packets
 
     if (process.argv.length > 2) {
       this.inputStream = fs.createReadStream(process.argv[2])
@@ -31,6 +34,7 @@ module.exports =  class Parser extends EventEmitter {
     this.pipeline.on('data', data => {
     
       // console.log(data.value)
+      this.packetBuffer.push(data.value)
       this.emit(`packet`, data.value)
       
     });
@@ -39,7 +43,7 @@ module.exports =  class Parser extends EventEmitter {
 
       console.log(`Done`)
       this.emit(`end`)
-      
+
     })
     
   }
