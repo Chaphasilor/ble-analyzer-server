@@ -91,6 +91,14 @@ function handleCommand(command) {
       parser.on(`packet`, sendLivePacketSummary)
 
       break;
+
+    case `connections`:
+
+      console.log(`parser.connections:`, parser.connections);
+      connection.send(response([...parser.connections]))
+      connection.send(end())
+
+      break;
   
     default:
       break;

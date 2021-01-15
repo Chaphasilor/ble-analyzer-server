@@ -27,11 +27,28 @@ function packet(originalPacket, format) {
     }
     
   } catch (err) {
-    console.error(err)
+    console.error(`Error while extracting packet info:`, err)
   }
   
 }
 module.exports.packet = packet
+
+function connection(originalPacket) {
+
+  try {
+    
+    let info = getPacketInfo(originalPacket)
+
+    return !info.isPartOfConnection ? false : {
+      connectionId: info.accessAddress,
+    } 
+    
+  } catch (err) {
+    console.error(`Error while extracting packet info:`, err);
+  }
+  
+}
+module.exports.connection = connection
 
 function getPacketInfo(originalPacket) {
 
@@ -39,6 +56,42 @@ function getPacketInfo(originalPacket) {
 
   let layers = originalPacket._source.layers
   let source = {}, destination = {}
+  let packetType = `unknown`
+  let accessAddress
+  let isPartOfConnection
+
+  //TODO make sure all advertising packets (accessAddress 0x8e89bed6 should be the standard one) are not treated as a connection
+  if (layers.btle[`btle.advertising_header`]) {
+
+    switch (layers.btle[`btle.advertising_header_tree`][`btle.advertising_header.pdu_type`]) {
+      case `0x00000000`:
+        packetType = `advertising`
+        break;
+      case `0x00000001`:
+        packetType = `advertising`
+        break;
+      case `0x00000002`:
+        packetType = `advertising`
+        break;
+      case `0x00000006`:
+        packetType = `advertising`
+        break;
+      case `0x00000007`:
+        packetType = `advertising`
+        break;
+    
+      default:
+        packetType = `unknown`
+        break;
+    }
+    
+  }
+
+  if (layers.btle[`btle.access_address`]) {
+    accessAddress = layers.btle[`btle.access_address`]
+  }
+
+  isPartOfConnection = packetType !== `advertising` && accessAddress
 
   // determine source
   if (
@@ -95,6 +148,8 @@ function getPacketInfo(originalPacket) {
     packetId: Number(layers.frame[`frame.number`]),
     microseconds: Number(layers.frame[`frame.time_epoch`].slice(0, -3).split(`.`).join(``)),
     channel: Number(layers.nordic_ble[`nordic_ble.channel`]),
+    isPartOfConnection,
+    accessAddress,
     source,
     destination,
     protocols: layers.frame[`frame.protocols`].split(`:`).filter(x => x !== `btcommon`).map(protocolName => {
