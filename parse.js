@@ -41,8 +41,9 @@ module.exports = class Parser extends EventEmitter {
       this.packetBuffer.push(data.value)
       this.emit(`packet`, data.value)
       let connection = Interpret.connection(data.value)
-      if (connection) {
-        this.connections.add(connection.connectionId)
+      // if the packet contains a connection and the connection hasn't been included before, emit the event
+      if (connection && (this.connections.size < this.connections.add(connection.connectionId).size)) {
+        this.emit(`new-connection`, [...this.connections])
       }
       
     });

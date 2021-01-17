@@ -18,6 +18,8 @@ function packet(originalPacket, format) {
           malformed: info.malformed,
           packetId: info.packetId,
           microseconds: info.microseconds,
+          isPartOfConnection: info.isPartOfConnection,
+          accessAddress: info.accessAddress,
           source: info.source,
           destination: info.destination,
           protocols: info.protocols.map(protocol => protocol.name),

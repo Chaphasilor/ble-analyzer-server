@@ -92,6 +92,13 @@ function handleCommand(command) {
 
       break;
 
+    case `connectionsLive`:
+
+      parser.off(`new-connection`, sendConnections) // make sure any previous handler is removed before attaching a new handler
+      parser.on(`new-connection`, sendConnections)
+
+      break;
+
     case `connections`:
 
       console.log(`parser.connections:`, parser.connections);
@@ -114,6 +121,18 @@ function sendLivePacketSummary(packet) {
     value: [
       `live`,
       [simplePacket],
+    ]
+  })
+  
+}
+
+function sendConnections(connections) {
+
+  connection.send({
+    type: `response`,
+    value: [
+      `connectionsLive`,
+      connections,
     ]
   })
   
