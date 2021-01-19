@@ -18,8 +18,8 @@ function packet(originalPacket, format) {
           malformed: info.malformed,
           packetId: info.packetId,
           microseconds: info.microseconds,
-          isPartOfConnection: info.isPartOfConnection,
-          accessAddress: info.accessAddress,
+          isPartOfConnection: info.connection.isPartOfConnection,
+          accessAddress: info.connection.accessAddress ,
           source: info.source,
           destination: info.destination,
           protocols: info.protocols.map(protocol => protocol.name),
@@ -40,9 +40,11 @@ function connection(originalPacket) {
   try {
     
     let info = getPacketInfo(originalPacket)
-
-    return !info.isPartOfConnection ? false : {
-      connectionId: info.accessAddress,
+    
+    return !info.connection.isPartOfConnection ? false : {
+      accessAddress: info.connection.accessAddress,
+      master: info.connection.master,
+      slave: info.connection.slave,
     } 
     
   } catch (err) {
@@ -93,7 +95,7 @@ function getPacketInfo(originalPacket) {
     accessAddress = layers.btle[`btle.access_address`]
   }
 
-  isPartOfConnection = packetType !== `advertising` && accessAddress
+  isPartOfConnection = packetType !== `advertising` && accessAddress !== `0x8e89bed6`
 
   // determine source
   if (
@@ -150,8 +152,12 @@ function getPacketInfo(originalPacket) {
     packetId: Number(layers.frame[`frame.number`]),
     microseconds: Number(layers.frame[`frame.time_epoch`].slice(0, -3).split(`.`).join(``)),
     channel: Number(layers.nordic_ble[`nordic_ble.channel`]),
-    isPartOfConnection,
-    accessAddress,
+    connection: {
+      isPartOfConnection,
+      accessAddress,
+      master: layers.btle[`btle.master_bd_addr`],
+      slave: layers.btle[`btle.slave_bd_addr`],
+    },
     source,
     destination,
     protocols: layers.frame[`frame.protocols`].split(`:`).filter(x => x !== `btcommon`).map(protocolName => {

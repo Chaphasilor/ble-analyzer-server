@@ -102,7 +102,7 @@ function handleCommand(command) {
     case `connections`:
 
       console.log(`parser.connections:`, parser.connections);
-      connection.send(response([...parser.connections]))
+      connection.send(response([...parser.connections.values()]))
       connection.send(end())
 
       break;
