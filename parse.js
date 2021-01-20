@@ -4,6 +4,8 @@ const { spawn } = require(`child_process`)
 const EventEmitter = require(`events`)
 const CBuffer = require(`cbuffer`)
 
+const Interpret = require(`./interpret`)
+
 module.exports = class Parser extends EventEmitter {
 
   constructor() {
@@ -11,6 +13,7 @@ module.exports = class Parser extends EventEmitter {
     super()
 
     this.packetBuffer = new CBuffer(100000) // only remember the last 100000 packets
+    this.connections = new Map()
 
     if (process.argv.length > 2) {
       this.inputStream = fs.createReadStream(process.argv[2])
@@ -18,7 +21,8 @@ module.exports = class Parser extends EventEmitter {
       this.inputStream = process.stdin
     }
     
-    this.tshark = spawn(`C:/Program Files/Wireshark/tshark`, [`-i`, `-`, `-T`, `json`])
+    // tshark needs to be in PATH
+    this.tshark = spawn(`tshark`, [`-i`, `-`, `-T`, `json`])
     
     this.pipeline = this.tshark.stdout
       .pipe(StreamArray.withParser());
@@ -36,6 +40,14 @@ module.exports = class Parser extends EventEmitter {
       // console.log(data.value)
       this.packetBuffer.push(data.value)
       this.emit(`packet`, data.value)
+      let connection = Interpret.connection(data.value)
+      // if the packet contains a connection and the connection hasn't been included before, emit the event
+      if (connection && !this.connections.has(connection.accessAddress)) {
+
+        this.connections.set(connection.accessAddress, connection)
+        this.emit(`new-connection`, [...this.connections.values()])
+
+      }
       
     });
     
