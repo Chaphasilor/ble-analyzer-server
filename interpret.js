@@ -14,7 +14,8 @@ function packet(originalPacket, format) {
 
       case `raw`:
 
-        return originalPacket._source
+        // return originalPacket._source
+        return originalPacket
 
       default: // simple format
 
@@ -22,6 +23,9 @@ function packet(originalPacket, format) {
           malformed: info.malformed,
           packetId: info.packetId,
           microseconds: info.microseconds,
+          channel: info.channel,
+          rssi: info.rssi,
+          payload: info.payload,
           isPartOfConnection: info.connection.isPartOfConnection,
           accessAddress: info.connection.accessAddress,
           type: info.type,
@@ -74,6 +78,8 @@ function getPacketInfo(originalPacket) {
   let isPartOfConnection
   let master = ``, slave = ``
   let channel
+  let rssi
+  let payload
   let packetId
   let microseconds
   let length
@@ -81,6 +87,8 @@ function getPacketInfo(originalPacket) {
 
   malformed = layers[`_ws.malformed`] !== undefined
   channel = parseInt(layers.nordic_ble[`nordic_ble.channel`])
+  rssi = layers.nordic_ble[`nordic_ble.rssi`]
+  payload = layers.frame_raw[0]
   packetId = parseInt(layers.frame[`frame.number`]),
   microseconds = parseInt(layers.frame[`frame.time_epoch`].slice(0, -3).split(`.`).join(``)),
   length = parseInt(layers.frame[`frame.len`])
@@ -253,6 +261,8 @@ function getPacketInfo(originalPacket) {
     packetId,
     microseconds,
     channel,
+    rssi,
+    payload,
     type,
     connection: {
       isPartOfConnection,

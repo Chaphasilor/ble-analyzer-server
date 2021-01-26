@@ -22,7 +22,10 @@ module.exports = class Parser extends EventEmitter {
     }
     
     // tshark needs to be in PATH
-    this.tshark = spawn(`tshark`, [`-i`, `-`, `-T`, `json`])
+    // '-i -': use interface 'pipe
+    // '-T json': output packet info as JSON
+    // '-x': include raw packet data with output
+    this.tshark = spawn(`tshark`, [`-i`, `-`, `-T`, `json`, `-x`])
     
     this.pipeline = this.tshark.stdout
       .pipe(StreamArray.withParser());
