@@ -14,6 +14,7 @@ module.exports = class Parser extends EventEmitter {
 
     this.packetBuffer = new CBuffer(100000) // only remember the last 100000 packets
     this.connections = new Map()
+    this.advertisers = new Map()
 
     if (process.argv.length > 2) {
       this.inputStream = fs.createReadStream(process.argv[2])
@@ -45,10 +46,33 @@ module.exports = class Parser extends EventEmitter {
       this.emit(`packet`, data.value)
       let connection = Interpret.connection(data.value)
       // if the packet contains a connection and the connection hasn't been included before, emit the event
-      if (connection && !this.connections.has(connection.accessAddress)) {
+      if (connection) {
 
-        this.connections.set(connection.accessAddress, connection)
-        this.emit(`new-connection`, [...this.connections.values()])
+        if (this.connections.has(connection.accessAddress)) {
+          this.connections.get(connection.accessAddress).packets += 1
+        } else {
+
+          connection.packets = 1;
+          this.connections.set(connection.accessAddress, connection)
+          this.emit(`new-connection`, [...this.connections.values()])
+
+        }
+
+      }
+
+      let advertisement = Interpret.advertisement(data.value)
+
+      if (advertisement) {
+
+        if (this.advertisers.has(advertisement.advertisingAddress)) {
+          this.advertisers.get(advertisement.advertisingAddress).packets += 1
+        } else {
+
+          advertisement.packets = 1;
+          this.advertisers.set(advertisement.advertisingAddress, advertisement)
+          this.emit(`new-advertiser`, [...this.advertisers.values()])
+
+        }
 
       }
       

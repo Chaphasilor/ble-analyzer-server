@@ -29,6 +29,7 @@ function packet(originalPacket, format) {
           isPartOfConnection: info.connection.isPartOfConnection,
           accessAddress: info.connection.accessAddress,
           type: info.type,
+          advertisingAddress: info.advertisingAddress,
           source: info.source,
           destination: info.destination,
           protocols: info.protocols.map(protocol => protocol.name),
@@ -54,7 +55,7 @@ function connection(originalPacket) {
       accessAddress: info.connection.accessAddress,
       master: info.connection.master,
       slave: info.connection.slave,
-    } 
+    }
     
   } catch (err) {
     console.error(`Error while extracting packet info:`, err);
@@ -62,6 +63,23 @@ function connection(originalPacket) {
   
 }
 module.exports.connection = connection
+
+function advertisement(originalPacket) {
+
+  try {
+    
+    let info = getPacketInfo(originalPacket)
+
+    return !info.isAdvertisement ? false : {
+      advertisingAddress: info.advertisingAddress,
+    }
+    
+  } catch (err) {
+    console.error(`Error while extracting packet info:`, err);
+  }
+  
+}
+module.exports.advertisement = advertisement
 
 function getPacketInfo(originalPacket) {
 
@@ -84,14 +102,17 @@ function getPacketInfo(originalPacket) {
   let microseconds
   let length
   let protocols
+  let isAdvertisement = false
+  let advertisingAddress
 
   malformed = layers[`_ws.malformed`] !== undefined
   channel = parseInt(layers.nordic_ble[`nordic_ble.channel`])
   rssi = layers.nordic_ble[`nordic_ble.rssi`]
   payload = layers.frame_raw[0]
-  packetId = parseInt(layers.frame[`frame.number`]),
-  microseconds = parseInt(layers.frame[`frame.time_epoch`].slice(0, -3).split(`.`).join(``)),
+  packetId = parseInt(layers.frame[`frame.number`])
+  microseconds = parseInt(layers.frame[`frame.time_epoch`].slice(0, -3).split(`.`).join(``))
   length = parseInt(layers.frame[`frame.len`])
+  advertisingAddress = layers.btle[`btle.advertising_address`]
 
   //TODO make sure all advertising packets (accessAddress 0x8e89bed6 should be the standard one) are not treated as a connection
   if (layers.btle[`btle.advertising_header`]) {
@@ -99,12 +120,15 @@ function getPacketInfo(originalPacket) {
     switch (parseInt(layers.btle[`btle.advertising_header_tree`][`btle.advertising_header.pdu_type`].slice(-2), 16)) {
       case 0:
         type = `ADV_IND`
+        isAdvertisement = true
         break;
       case 1:
         type = `ADV_DIRECT_IND`
+        isAdvertisement = true
         break;
       case 2:
         type = `ADV_NONCONN_IND`
+        isAdvertisement = true
         break;
       case 3:
         type = primaryAdvertisingChannels.includes(channel) ? `SCAN_REQ` : `AUX_SCAN_REQ`
@@ -120,6 +144,7 @@ function getPacketInfo(originalPacket) {
         break;
       case 7:
         type = primaryAdvertisingChannels.includes(channel) ? `ADV_EXT_IND` : `AUX_ADV_IND` // or `AUX_SCAN_RSP`, `AUX_SYNC_IND`, `AUX_CHAIN_IND`
+        isAdvertisement = true
         break;
       case 8:
         type = `AUX_CONNECT_RSP`
@@ -272,6 +297,8 @@ function getPacketInfo(originalPacket) {
     },
     source,
     destination,
+    isAdvertisement,
+    advertisingAddress,
     protocols,
     length,
   }

@@ -106,6 +106,21 @@ function handleCommand(command) {
       connection.send(end())
 
       break;
+
+    case `advertisersLive`:
+
+      parser.off(`new-advertiser`, sendAdvertisers) // make sure any previous handler is removed before attaching a new handler
+      parser.on(`new-advertiser`, sendAdvertisers)
+
+      break;
+
+    case `advertisers`:
+
+      console.log(`parser.advertisers:`, parser.advertisers);
+      connection.send(response([...parser.advertisers.values()]))
+      connection.send(end())
+
+      break;
   
     default:
       break;
@@ -133,6 +148,18 @@ function sendConnections(connections) {
     value: [
       `connectionsLive`,
       connections,
+    ]
+  })
+  
+}
+
+function sendAdvertisers(advertisers) {
+
+  connection.send({
+    type: `response`,
+    value: [
+      `advertisersLive`,
+      advertisers,
     ]
   })
   
