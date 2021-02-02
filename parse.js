@@ -4,7 +4,7 @@ const { spawn } = require(`child_process`)
 const EventEmitter = require(`events`)
 const CBuffer = require(`cbuffer`)
 
-const Interpret = require(`./interpret`)
+const Packet = require(`./packet`)
 
 module.exports = class Parser extends EventEmitter {
 
@@ -42,9 +42,10 @@ module.exports = class Parser extends EventEmitter {
     this.pipeline.on('data', data => {
     
       // console.log(data.value)
-      this.packetBuffer.push(data.value)
-      this.emit(`packet`, data.value)
-      let connection = Interpret.connection(data.value)
+      let packet = new Packet(data.value)
+      this.packetBuffer.push(packet)
+      this.emit(`packet`, packet)
+      let connection = packet.getConnectionInfo()
       // if the packet contains a connection and the connection hasn't been included before, emit the event
       if (connection) {
 
@@ -60,7 +61,7 @@ module.exports = class Parser extends EventEmitter {
 
       }
 
-      let advertisement = Interpret.advertisement(data.value)
+      let advertisement = packet.getAdvertisementInfo()
 
       if (advertisement) {
 

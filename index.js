@@ -1,10 +1,9 @@
 const PacketParser = require(`./parse`)
 const GuiConnection = require(`./gui-connection`)
-const Interpret = require(`./interpret`)
+const Packet = require(`./packet`)
 
 let connection = new GuiConnection()
 let parser = new PacketParser()
-let sendBuffer = []
 
 connection.on(`ready`, () => {
 
@@ -56,7 +55,7 @@ function handleCommand(command) {
     case `sendAll`:
 
       console.log(`parser.packetBuffer.toArray().length:`, parser.packetBuffer.toArray().length);
-      connection.send(response(parser.packetBuffer.toArray().map(packet => Interpret.packet(packet)))) // sends all packets inside the parser.packetBuffer in simple format
+      connection.send(response(parser.packetBuffer.toArray().map(packet => packet.getInfo()))) // sends all packets inside the parser.packetBuffer in simple format
       connection.send(end())
       
       break;
@@ -67,13 +66,13 @@ function handleCommand(command) {
       }
 
       let foundPacket = parser.packetBuffer.toArray().find(packet => {
-        return Number(packet._source.layers.frame[`frame.number`]) == command[1]
+        return packet.info.packetId === command[1]
       })
 
       if (foundPacket) {
 
         console.log(`foundPacket:`, foundPacket);
-        connection.send(response(Interpret.packet(foundPacket, command[2])))
+        connection.send(response(foundPacket.getInfo(command[2])))
         connection.send(end())
         
       } else {
@@ -130,7 +129,7 @@ function handleCommand(command) {
 
 function sendLivePacketSummary(packet) {
 
-  let simplePacket = Interpret.packet(packet)
+  let simplePacket = packet.getInfo()
   connection.send({
     type: `response`,
     value: [
