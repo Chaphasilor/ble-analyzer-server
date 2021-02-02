@@ -62,11 +62,24 @@ module.exports = class Packet {
 
   getConnectionInfo() {
 
-    return !this.info.connection.isPartOfConnection ? false : {
-      accessAddress: this.info.connection.accessAddress,
-      master: this.info.connection.master,
-      slave: this.info.connection.slave,
+    if (this.info.connection.isBeginningOfConnection) {
+      return {
+        accessAddress: this.info.connection.accessAddress,
+        master: this.info.connection.master,
+        slave: this.info.connection.slave,
+        connectionProperties: this.info.connection.connectionProperties
+      }
     }
+    
+    if (this.info.connection.isPartOfConnection) {
+      return {
+        accessAddress: this.info.connection.accessAddress,
+        master: this.info.connection.master,
+        slave: this.info.connection.slave,
+      }
+    }
+    
+    return false
     
   }
 
@@ -91,6 +104,7 @@ module.exports = class Packet {
     let direction = `unknown`
     let accessAddress
     let isPartOfConnection
+    let isBeginningOfConnection = false
     let master = ``, slave = ``
     let channel
     let rssi
@@ -101,6 +115,7 @@ module.exports = class Packet {
     let protocols
     let isAdvertisement = false
     let advertisingAddress
+    let connectionProperties = {}
   
     malformed = layers[`_ws.malformed`] !== undefined
     channel = parseInt(layers.nordic_ble[`nordic_ble.channel`])
@@ -151,6 +166,37 @@ module.exports = class Packet {
           type = `unknown`
           break;
       }
+      
+    }
+
+    //FIXME check if compatible with CONNECT_IND
+    if ([`AUX_CONNECT_REQ`].includes(type)) {
+
+      master = layers.btle[`btle.initiator_address`]
+      slave = layers.btle[`btle.advertising_address`]
+      direction = `M2S`
+      isBeginningOfConnection = true
+
+      connectionProperties.accessAddress = layers.btle[`btle.link_layer_data`][`btle.link_layer_data.access_address`]
+      connectionProperties.crcInit = layers.btle[`btle.link_layer_data`][`btle.link_layer_data.crc_init`]
+
+      connectionProperties.windowSize = parseInt(layers.btle[`btle.link_layer_data`][`btle.link_layer_data.window_size`])
+      // between 0 and connectionInterval, offset length = 1.25ms * offset
+      connectionProperties.windowOffset = parseInt(layers.btle[`btle.link_layer_data`][`btle.link_layer_data.window_offset`])
+      // connection interval length = connectionInterval * 1.25ms
+      connectionProperties.connectionInterval = parseInt(layers.btle[`btle.link_layer_data`][`btle.link_layer_data.interval`])
+      // the number of connection intervals the slave is allowed to ignore if it has no data to send. < 320
+      connectionProperties.slaveLatency = parseFloat(layers.btle[`btle.link_layer_data`][`btle.link_layer_data.latency`])
+      // the time until a connection is considered lost. needs to be at least connection interval length + slave latency length. The timeout is 6? until the connection has been confirmed
+      connectionProperties.supervisionTimeout = parseFloat(layers.btle[`btle.link_layer_data`][`btle.link_layer_data.timeout`])
+
+      connectionProperties.channelMap = {}
+      Object.entries(layers.btle[`btle.link_layer_data`][`btle.link_layer_data.channel_map_tree`]).filter(([key, value]) => !key.includes(`raw`)).forEach(([key, value]) => connectionProperties.channelMap[key.split(`.`).slice(-1)] = value === `1`)
+
+      console.log(`connectionProperties.channelMap:`, connectionProperties.channelMap)
+
+      connectionProperties.channelHop = parseInt(layers.btle[`btle.link_layer_data`][`btle.link_layer_data.hop`])
+      connectionProperties.sleepClockAccuracy = layers.btle[`btle.link_layer_data`][`btle.link_layer_data.sleep_clock_accuracy`]
       
     }
   
@@ -288,9 +334,11 @@ module.exports = class Packet {
       type,
       connection: {
         isPartOfConnection,
+        isBeginningOfConnection,
         accessAddress,
         master,
         slave,
+        connectionProperties,
       },
       source,
       destination,
