@@ -64,16 +64,26 @@ module.exports = class Packet {
 
     if (this.info.connection.isBeginningOfConnection) {
       return {
-        accessAddress: this.info.connection.accessAddress,
+        accessAddress: this.info.connection.properties.accessAddress,
+        state: `start`,
         master: this.info.connection.master,
         slave: this.info.connection.slave,
-        connectionProperties: this.info.connection.connectionProperties
+        properties: this.info.connection.properties,
+        packets: 0,
+      }
+    }
+
+    if (this.info.connection.isEndOfConnection) {
+      return {
+        accessAddress: this.info.connection.properties.accessAddress,
+        state: `end`,
       }
     }
     
     if (this.info.connection.isPartOfConnection) {
       return {
         accessAddress: this.info.connection.accessAddress,
+        state: `active`,
         master: this.info.connection.master,
         slave: this.info.connection.slave,
       }
@@ -101,10 +111,13 @@ module.exports = class Packet {
     let malformed
     let source = ``, destination = ``
     let type = `unknown`
+    let llid = `unknown`
+    let opCode = `unknown`
     let direction = `unknown`
     let accessAddress
-    let isPartOfConnection
+    let isPartOfConnection = false
     let isBeginningOfConnection = false
+    let isEndOfConnection = false
     let master = ``, slave = ``
     let channel
     let rssi
@@ -126,7 +139,8 @@ module.exports = class Packet {
     length = parseInt(layers.frame[`frame.len`])
     advertisingAddress = layers.btle[`btle.advertising_address`]
   
-    //TODO make sure all advertising packets (accessAddress 0x8e89bed6 should be the standard one) are not treated as a connection
+
+
     if (layers.btle[`btle.advertising_header`]) {
   
       switch (parseInt(layers.btle[`btle.advertising_header_tree`][`btle.advertising_header.pdu_type`].slice(-2), 16)) {
@@ -169,7 +183,37 @@ module.exports = class Packet {
       
     }
 
-    //FIXME check if compatible with CONNECT_IND
+    if (layers.btle[`btle.data_header`]) {
+
+      switch (parseInt(layers.btle[`btle.data_header_tree`][`btle.data_header.llid`])) {
+        case 3: // Control PDU
+          
+          llid = `Control PDU`
+        
+          switch (parseInt(layers.btle[`btle.control_opcode`])) {
+            case 2:
+              opCode = `LL_TERMINATE_IND`
+              break;
+          
+            default:
+              break;
+          }
+        
+          break;
+      
+        default:
+          break;
+      }
+
+    }
+
+    isEndOfConnection = opCode === `LL_TERMINATE_IND`
+
+    if (layers.btle[`btle.access_address`]) {
+      accessAddress = layers.btle[`btle.access_address`]
+    }
+    
+    //TODO check if compatible with CONNECT_IND
     if ([`AUX_CONNECT_REQ`].includes(type)) {
 
       master = layers.btle[`btle.initiator_address`]
@@ -193,15 +237,9 @@ module.exports = class Packet {
       connectionProperties.channelMap = {}
       Object.entries(layers.btle[`btle.link_layer_data`][`btle.link_layer_data.channel_map_tree`]).filter(([key, value]) => !key.includes(`raw`)).forEach(([key, value]) => connectionProperties.channelMap[key.split(`.`).slice(-1)] = value === `1`)
 
-      console.log(`connectionProperties.channelMap:`, connectionProperties.channelMap)
-
       connectionProperties.channelHop = parseInt(layers.btle[`btle.link_layer_data`][`btle.link_layer_data.hop`])
       connectionProperties.sleepClockAccuracy = layers.btle[`btle.link_layer_data`][`btle.link_layer_data.sleep_clock_accuracy`]
       
-    }
-  
-    if (layers.btle[`btle.access_address`]) {
-      accessAddress = layers.btle[`btle.access_address`]
     }
   
     isPartOfConnection = accessAddress && accessAddress !== `0x8e89bed6`
@@ -335,10 +373,11 @@ module.exports = class Packet {
       connection: {
         isPartOfConnection,
         isBeginningOfConnection,
+        isEndOfConnection,
         accessAddress,
         master,
         slave,
-        connectionProperties,
+        properties: connectionProperties,
       },
       source,
       destination,
