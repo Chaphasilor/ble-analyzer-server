@@ -56,6 +56,9 @@ module.exports = class Packet {
       destination: this.info.destination,
       protocols: this.info.protocols.map(protocol => protocol.name),
       length: this.info.length,
+      highestProtocol: [`btatt`, `btsmp`, `btl2cap`, `btle`, `nordic_ble`].find(proto => {
+        return this.info.protocols.map(x => x.shortName).includes(proto) 
+      })
     }
     
   }
@@ -127,11 +130,13 @@ module.exports = class Packet {
     let length
     let protocols
     let isAdvertisement = false
+    let isOnPrimaryAdvertisingChannel = false
     let advertisingAddress
     let connectionProperties = {}
   
     malformed = layers[`_ws.malformed`] !== undefined
     channel = parseInt(layers.nordic_ble[`nordic_ble.channel`])
+    isOnPrimaryAdvertisingChannel = [37, 38, 39].includes(channel)
     rssi = layers.nordic_ble[`nordic_ble.rssi`]
     payload = layers.frame_raw[0]
     packetId = parseInt(layers.frame[`frame.number`])
@@ -282,6 +287,7 @@ module.exports = class Packet {
         case `btle`:
           return {
             name: `BT LE Link Layer`,
+            shortName: protocolName,
             length: layers.btle[`btle.length`],
             accessAddress: layers.btle[`btle.access_address`],
             header: layers.btle[`btle.advertising_header_tree`] ? Object.entries(layers.btle[`btle.advertising_header_tree`]).reduce((obj, [key, value], index) => {
@@ -295,6 +301,7 @@ module.exports = class Packet {
         case `nordic_ble`:
           return {
             name: `Nordic BLE Sniffer`,
+            shortName: protocolName,
             length: layers.nordic_ble[`nordic_ble.len`],
             boardId: layers.nordic_ble[`nordic_ble.board_id`],
             flags: layers.nordic_ble[`nordic_ble.flags_tree`] ? Object.entries(layers.nordic_ble[`nordic_ble.flags_tree`]).reduce((obj, [key, value], index) => {
@@ -308,6 +315,7 @@ module.exports = class Packet {
         case `btl2cap`:
           return {
             name: `L2CAP`,
+            shortName: protocolName,
             length: Number(layers.btl2cap[`btl2cap.length`]),
             cid: Number(layers.btl2cap[`btl2cap.cid`]),
             payload: layers.btl2cap[`btl2cap.payload`]
@@ -317,6 +325,7 @@ module.exports = class Packet {
         case `btatt`:
           return {
             name: `ATT`,
+            shortName: protocolName,
             startingHandle: layers.btatt[`btatt.starting_handle`],
             endingHandle: layers.btatt[`btatt.ending_handle`],
             opcode: layers.btatt[`btatt.opcode_tree`] ? Object.entries(layers.btatt[`btatt.opcode_tree`]).reduce((obj, [key, value], index) => {
@@ -330,6 +339,7 @@ module.exports = class Packet {
         case `btsmp`:
           return {
             name: `Security Manager`,
+            shortName: protocolName,
             opcode: layers.btsmp[`btsmp.opcode`],
             ioCapability: layers.btsmp[`btsmp.io_capability`],
             oobDataFlags: layers.btsmp[`btsmp.oob_data_flags`],
@@ -353,7 +363,8 @@ module.exports = class Packet {
   
         default:
           return {
-            name: `<unknown protocol> (${protocolName})`
+            name: `<unknown protocol> (${protocolName})`,
+            shortName: protocolName,
           }
           break;
       }
@@ -382,6 +393,7 @@ module.exports = class Packet {
       source,
       destination,
       isAdvertisement,
+      isOnPrimaryAdvertisingChannel,
       advertisingAddress,
       protocols,
       length,

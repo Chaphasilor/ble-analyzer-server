@@ -97,13 +97,13 @@ module.exports = class Parser extends EventEmitter {
 
           if (this.connections.has(connection.accessAddress)) {
 
-            console.log(`++connectionPacketCounter:`, ++connectionPacketCounter)
+            // console.log(`++connectionPacketCounter:`, ++connectionPacketCounter)
 
             let activeConnection = this.connections.get(connection.accessAddress)
             activeConnection.state = `active`
             activeConnection.packets += 1
 
-            console.log(`activeConnection.packets:`, activeConnection.packets)
+            // console.log(`activeConnection.packets:`, activeConnection.packets)
             
           } else {
             console.error(`Connection packet detected but connection doesn't exist yet! Discarding...`)
@@ -136,6 +136,7 @@ module.exports = class Parser extends EventEmitter {
 
       console.log(`Done`)
       this.emit(`end`)
+      console.log(`protocols:`, protocols)
 
     })
     
