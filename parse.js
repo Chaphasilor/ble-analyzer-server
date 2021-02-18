@@ -87,7 +87,12 @@ module.exports = class Parser extends EventEmitter {
 
           if (this.connections.has(connection.accessAddress)) {
 
-            this.connections.get(connection.accessAddress).state = connection.state
+            let existingConnection = this.connections.get(connection.accessAddress)
+            existingConnection.state = connection.state
+
+            if (existingConnection.packets % 2 !== 0) {
+              this.emit(`warning`, `[${connection.accessAddress}] Odd number of connection events before end of connection!`)
+            }
             
           } else {
             console.error(`End of connection detected but connection doesn't exists yet! Ignoring...`)
@@ -100,8 +105,24 @@ module.exports = class Parser extends EventEmitter {
             // console.log(`++connectionPacketCounter:`, ++connectionPacketCounter)
 
             let activeConnection = this.connections.get(connection.accessAddress)
+
+            let timeSinceLastSlavePacket = (activeConnection.lastPackets[`S2M`] - connection.microseconds)
+            // check if slave has timed out (but not necessarily lost)
+            // latency + 1 because the latency can be set to 0 to disallow skipping intervals
+            if (activeConnection.properties.connectionInterval * 1250 * (activeConnection.properties.slaveLatency + 1) < timeSinceLastSlavePacket) {
+
+              if (activeConnection.properties.supervisionTimeout * 10000 < timeSinceLastSlavePacket) {
+                this.emit(`alert`, `[${connection.accessAddress}] Lost connection to slave!`)
+              } else {
+                this.emit(`warning`, `[${connection.accessAddress}] Slave has timed out!`)
+              }
+
+            }
+            
             activeConnection.state = `active`
             activeConnection.packets += 1
+            activeConnection.distribution[connection.direction] += 1
+            activeConnection.lastPackets[connection.direction] = connection.microseconds
 
             // console.log(`activeConnection.packets:`, activeConnection.packets)
             
@@ -136,7 +157,6 @@ module.exports = class Parser extends EventEmitter {
 
       console.log(`Done`)
       this.emit(`end`)
-      console.log(`protocols:`, protocols)
 
     })
     

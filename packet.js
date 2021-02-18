@@ -48,6 +48,7 @@ module.exports = class Packet {
       channel: this.info.channel,
       rssi: this.info.rssi,
       payload: this.info.payload,
+      isAdvertisement: this.info.isAdvertisement,
       isPartOfConnection: this.info.connection.isPartOfConnection,
       accessAddress: this.info.connection.accessAddress,
       type: this.info.type,
@@ -73,6 +74,14 @@ module.exports = class Packet {
         slave: this.info.connection.slave,
         properties: this.info.connection.properties,
         packets: 0,
+        distribution: {
+          M2S: 0,
+          S2M: 0,
+        },
+        lastPackets: {
+          M2S: this.info.microseconds,
+          S2M: this.info.microseconds,
+        },
       }
     }
 
@@ -89,6 +98,8 @@ module.exports = class Packet {
         state: `active`,
         master: this.info.connection.master,
         slave: this.info.connection.slave,
+        direction: this.info.direction,
+        microseconds: this.info.microseconds,
       }
     }
     
@@ -237,6 +248,7 @@ module.exports = class Packet {
       // the number of connection intervals the slave is allowed to ignore if it has no data to send. < 320
       connectionProperties.slaveLatency = parseFloat(layers.btle[`btle.link_layer_data`][`btle.link_layer_data.latency`])
       // the time until a connection is considered lost. needs to be at least connection interval length + slave latency length. The timeout is 6? until the connection has been confirmed
+      // timeout length = supervisionTimeout * 10ms
       connectionProperties.supervisionTimeout = parseFloat(layers.btle[`btle.link_layer_data`][`btle.link_layer_data.timeout`])
 
       connectionProperties.channelMap = {}
@@ -390,12 +402,14 @@ module.exports = class Packet {
         slave,
         properties: connectionProperties,
       },
+      direction,
       source,
       destination,
       isAdvertisement,
       isOnPrimaryAdvertisingChannel,
       advertisingAddress,
       protocols,
+      llid,
       length,
     }
     
