@@ -120,6 +120,21 @@ function handleCommand(command) {
       connection.send(end())
 
       break;
+
+    case `issuesLive`:
+
+      parser.off(`new-issue`, sendIssues) // make sure any previous handler is removed before attaching a new handler
+      parser.on(`new-issue`, sendIssues)
+
+      break;
+
+    case `issues`:
+
+      console.log(`parser.issues:`, parser.issues);
+      connection.send(response(parser.issues))
+      connection.send(end())
+
+      break;
   
     default:
       break;
@@ -159,6 +174,18 @@ function sendAdvertisers(advertisers) {
     value: [
       `advertisersLive`,
       advertisers,
+    ]
+  })
+  
+}
+
+function sendIssues(issues) {
+
+  connection.send({
+    type: `response`,
+    value: [
+      `issuesLive`,
+      issues,
     ]
   })
   

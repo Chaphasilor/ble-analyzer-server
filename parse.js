@@ -19,6 +19,7 @@ module.exports = class Parser extends EventEmitter {
     this.packetBuffer = new CBuffer(100000) // only remember the last 100000 packets
     this.connections = new Map()
     this.advertisers = new Map()
+    this.issues = []
 
     if (process.argv.length > 2) {
       this.inputStream = fs.createReadStream(process.argv[2])
@@ -59,6 +60,8 @@ module.exports = class Parser extends EventEmitter {
 
           console.log(`++connectionStartCounter:`, ++connectionStartCounter)
 
+          console.log(`connection.properties:`, connection.properties)
+          
           if (this.connections.has(connection.accessAddress)) {
 
             let oldConnection = this.connections.get(connection.accessAddress)
@@ -91,7 +94,12 @@ module.exports = class Parser extends EventEmitter {
             existingConnection.state = connection.state
 
             if (existingConnection.packets % 2 !== 0) {
-              this.emit(`warning`, `[${connection.accessAddress}] Odd number of connection events before end of connection!`)
+              this.issues.push({
+                type: `warning`,
+                microseconds: connection.microseconds,
+                message: `[${connection.accessAddress}] Odd number of connection events before end of connection!`,
+              })
+              this.emit(`new-issue`, this.issues)
             }
             
           } else {
@@ -106,16 +114,29 @@ module.exports = class Parser extends EventEmitter {
 
             let activeConnection = this.connections.get(connection.accessAddress)
 
-            let timeSinceLastSlavePacket = (activeConnection.lastPackets[`S2M`] - connection.microseconds)
+            let timeSinceLastSlavePacket = (connection.microseconds - activeConnection.lastPackets[`S2M`])
             // check if slave has timed out (but not necessarily lost)
             // latency + 1 because the latency can be set to 0 to disallow skipping intervals
+            // TODO it's detecting too many issues
             if (activeConnection.properties.connectionInterval * 1250 * (activeConnection.properties.slaveLatency + 1) < timeSinceLastSlavePacket) {
 
               if (activeConnection.properties.supervisionTimeout * 10000 < timeSinceLastSlavePacket) {
-                this.emit(`alert`, `[${connection.accessAddress}] Lost connection to slave!`)
+                this.issues.push({
+                  type: `alert`,
+                  microseconds: connection.microseconds,
+                  message: `[${connection.accessAddress}] Lost connection to slave!`,
+                })
               } else {
-                this.emit(`warning`, `[${connection.accessAddress}] Slave has timed out!`)
+                // disabled because it's a bit too verbose
+                
+                // this.issues.push({
+                //   type: `warning`,
+                //   microseconds: connection.microseconds,
+                //   message: `[${connection.accessAddress}] Slave has timed out!`,
+                // })
               }
+
+              this.emit(`new-issue`, this.issues)
 
             }
             
