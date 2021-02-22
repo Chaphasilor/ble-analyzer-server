@@ -1,9 +1,15 @@
+const http = require(`http`)
+require(`dotenv`).config()
+
 const PacketParser = require(`./parse`)
 const GuiConnection = require(`./gui-connection`)
 const Packet = require(`./packet`)
 
-let connection = new GuiConnection()
+let server = http.createServer()
+server.listen(process.env.PORT)
+let connection = new GuiConnection(server)
 let parser = new PacketParser()
+
 
 connection.on(`ready`, () => {
 
@@ -18,7 +24,7 @@ connection.on(`ready`, () => {
 
 })
 
-function handleCommand(command) {
+function handleCommand(socketId, command) {
 
   console.log(`Received command from GUI:`, command)
 
@@ -55,14 +61,14 @@ function handleCommand(command) {
     case `sendAll`:
 
       console.log(`parser.packetBuffer.toArray().length:`, parser.packetBuffer.toArray().length);
-      connection.send(response(parser.packetBuffer.toArray().map(packet => packet.getInfo()))) // sends all packets inside the parser.packetBuffer in simple format
-      connection.send(end())
+      connection.send(socketId, response(parser.packetBuffer.toArray().map(packet => packet.getInfo()))) // sends all packets inside the parser.packetBuffer in simple format
+      connection.send(socketId, end())
       
       break;
     case `send`:
 
       if (!(command[1] >= 0)) {
-        connection.send(error(`Missing packet ID while requesting specific packet!`))
+        connection.send(socketId, error(`Missing packet ID while requesting specific packet!`))
       }
 
       let foundPacket = parser.packetBuffer.toArray().find(packet => {
@@ -72,8 +78,8 @@ function handleCommand(command) {
       if (foundPacket) {
 
         console.log(`foundPacket:`, foundPacket);
-        connection.send(response(foundPacket.getInfo(command[2])))
-        connection.send(end())
+        connection.send(socketId, response(foundPacket.getInfo(command[2])))
+        connection.send(socketId, end())
         
       } else {
 
@@ -86,53 +92,61 @@ function handleCommand(command) {
 
     case `live`:
 
-      parser.off(`packet`, sendLivePacketSummary) // make sure any previous handler is removed before attaching a new handler
-      parser.on(`packet`, sendLivePacketSummary)
+      // parser.off(`packet`, sendLivePacketSummary(socketId)) // make sure any previous handler is removed before attaching a new handler
+      // parser.on(`packet`, sendLivePacketSummary(socketId))
 
+      connection.subscribe(socketId, command[0])
+      
       break;
 
     case `connectionsLive`:
 
-      parser.off(`new-connection`, sendConnections) // make sure any previous handler is removed before attaching a new handler
-      parser.on(`new-connection`, sendConnections)
+      // parser.off(`new-connection`, sendConnections(socketId)) // make sure any previous handler is removed before attaching a new handler
+      // parser.on(`new-connection`, sendConnections(socketId))
 
+      connection.subscribe(socketId, command[0])
+      
       break;
 
     case `connections`:
 
       console.log(`parser.connections:`, parser.connections);
-      connection.send(response([...parser.connections.values()]))
-      connection.send(end())
+      connection.send(socketId, response([...parser.connections.values()]))
+      connection.send(socketId, end())
 
       break;
 
     case `advertisersLive`:
 
-      parser.off(`new-advertiser`, sendAdvertisers) // make sure any previous handler is removed before attaching a new handler
-      parser.on(`new-advertiser`, sendAdvertisers)
+      // parser.off(`new-advertiser`, sendAdvertisers(socketId)) // make sure any previous handler is removed before attaching a new handler
+      // parser.on(`new-advertiser`, sendAdvertisers(socketId))
 
+      connection.subscribe(socketId, command[0])
+      
       break;
 
     case `advertisers`:
 
       console.log(`parser.advertisers:`, parser.advertisers);
-      connection.send(response([...parser.advertisers.values()]))
-      connection.send(end())
+      connection.send(socketId, response([...parser.advertisers.values()]))
+      connection.send(socketId, end())
 
       break;
 
     case `issuesLive`:
 
-      parser.off(`new-issue`, sendIssues) // make sure any previous handler is removed before attaching a new handler
-      parser.on(`new-issue`, sendIssues)
+      // parser.off(`new-issue`, sendIssues(socketId)) // make sure any previous handler is removed before attaching a new handler
+      // parser.on(`new-issue`, sendIssues(socketId))
 
+      connection.subscribe(socketId, command[0])
+      
       break;
 
     case `issues`:
 
       console.log(`parser.issues:`, parser.issues);
-      connection.send(response(parser.issues))
-      connection.send(end())
+      connection.send(socketId, response(parser.issues))
+      connection.send(socketId, end())
 
       break;
   
@@ -142,51 +156,97 @@ function handleCommand(command) {
   
 }
 
-function sendLivePacketSummary(packet) {
+parser.on(`packet`, broadcastLivePacketSummary)
+parser.on(`new-connection`, broadcastConnections)
+parser.on(`new-advertiser`, broadcastAdvertisers)
+parser.on(`new-issue`, broadcastIssues)
 
+function broadcastLivePacketSummary(packet) {
   let simplePacket = packet.getInfo()
-  connection.send({
+  connection.broadcast(`live`, {
     type: `response`,
     value: [
       `live`,
       [simplePacket],
     ]
   })
-  
 }
 
-function sendConnections(connections) {
-
-  connection.send({
+function broadcastConnections(connections) {
+  connection.broadcast(`connectionsLive`, {
     type: `response`,
     value: [
       `connectionsLive`,
       connections,
     ]
   })
-  
 }
 
-function sendAdvertisers(advertisers) {
-
-  connection.send({
+function broadcastAdvertisers(advertisers) {
+  connection.broadcast(`advertisersLive`, {
     type: `response`,
     value: [
       `advertisersLive`,
       advertisers,
     ]
   })
-  
 }
 
-function sendIssues(issues) {
-
-  connection.send({
+function broadcastIssues(issues) {
+  connection.broadcast(`issuesLive`, {
     type: `response`,
     value: [
       `issuesLive`,
       issues,
     ]
   })
-  
+}
+
+function sendLivePacketSummary(socketId, packet) {
+  return (packet) => {
+    let simplePacket = packet.getInfo()
+    connection.send({
+      type: `response`,
+      value: [
+        `live`,
+        [simplePacket],
+      ]
+    })
+  }
+}
+
+function sendConnections(socketId, connections) {
+  (connections) => {
+    connection.send({
+      type: `response`,
+      value: [
+        `connectionsLive`,
+        connections,
+      ]
+    })
+  }
+}
+
+function sendAdvertisers(socketId, advertisers) {
+  (advertisers) => {
+    connection.send({
+      type: `response`,
+      value: [
+        `advertisersLive`,
+        advertisers,
+      ]
+    })
+  }
+}
+
+function sendIssues(socketId, issues) {
+  (issues) => {
+    connection.send({
+      type: `response`,
+      value: [
+        `issuesLive`,
+        issues,
+      ]
+    })
+  }
 }

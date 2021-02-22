@@ -1,26 +1,30 @@
 const WebSocket = require(`ws`)
 const EventEmitter = require(`events`)
+const uuid = require(`uuid`).v4
 
 module.exports = class GuiConnection extends EventEmitter {
 
-  constructor() {
+  constructor(server) {
 
     super()
 
     this.wss = new WebSocket.Server({
-      host: `localhost`,
-      port: 80,
+      server,
     })
-    this.sockets = []
+    this.sockets = new Map()
+    this.subscriptions = {}
 
     this.wss.on(`listening`, () => {
       console.log(`Websocket server ready and listening`)
     })
     
     this.wss.on(`connection`, (socket, request) => {
+
+      let socketId = uuid()
+      socket.send(JSON.stringify(socketId))
     
       this.emit(`ready`)
-      this.sockets.push(socket)
+      this.sockets.set(socketId, socket)
       
       socket.on(`message`, (data) => {
     
@@ -35,7 +39,7 @@ module.exports = class GuiConnection extends EventEmitter {
         
         switch (parsed.type) {
           case `command`:
-            this.emit(`command`, parsed.value)
+            this.emit(`command`, socketId, parsed.value)
             break;
         
           default:
@@ -53,7 +57,7 @@ module.exports = class GuiConnection extends EventEmitter {
     
       socket.on(`close`, (code, reason) => {
 
-        this.sockets.pop()
+        this.sockets.delete(socketId)
         console.log(`Socket closed with code ${code}, reason:`, reason)
         this.emit(`close`)
 
@@ -69,17 +73,65 @@ module.exports = class GuiConnection extends EventEmitter {
     
   }
 
-  get connected() {
-    return this.sockets.length > 0 && this.sockets[0].readyState === 1
-  }
-
-  send(payload) {
+  send(socketId, payload) {
     
-    if (!this.connected) {
-      throw new Error(`Can't send a message before a connection has been established!`)
+    if (payload === undefined) {
+      throw new Error(`Missing socket ID or payload!`)
+    }
+
+    const stringifiedPayload = JSON.stringify(payload)
+
+    let socket = this.sockets.get(socketId)
+    if (!socket.readyState === 1) {
+      throw new Error(`Socket '${socketId}' isn't ready yet!`)
     }
     
-    this.sockets[0].send(JSON.stringify(payload))
+    this.sockets.get(socketId).send(stringifiedPayload)
+    
+  }
+
+  broadcast(command, payload) {
+
+    if (command === undefined || payload === undefined) {
+      throw new Error(`Missing command name or payload!`)
+    }
+    
+    console.info(`Broadcasting`)
+
+    const stringifiedPayload = JSON.stringify(payload)
+      
+    if (this.subscriptions[command]) {
+
+      this.subscriptions[command].forEach(socketId => {
+
+        let socket = this.sockets.get(socketId)
+        if (!socket.readyState === 1) {
+          throw new Error(`Socket '${socketId}' isn't ready yet!`)
+        }
+        
+        this.sockets.get(socketId).send(stringifiedPayload)
+        
+      })
+
+    }
+    
+  }
+
+  subscribe(socketId, command) {
+
+    if (this.subscriptions[command]) {
+      this.subscriptions[command].push(socketId)
+    } else {
+      this.subscriptions[command] = [socketId]
+    }
+    
+  }
+
+  unsubscribe(socketId, command) {
+
+    if (this.subscriptions[command]) {
+      this.subscriptions[command] = this.subscriptions[command].filter(x => x !== socketId)
+    }
     
   }
   

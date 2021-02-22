@@ -21,6 +21,14 @@ module.exports = class Parser extends EventEmitter {
     this.advertisers = new Map()
     this.issues = []
 
+    // this.packetEmitQueue = []
+
+    // setInterval(() => {
+    //   if (this.packetEmitQueue.length > 0) {
+    //     this.emit(`packet`, this.packetEmitQueue.shift())
+    //   }
+    // }, 25)
+
     if (process.argv.length > 2) {
       this.inputStream = fs.createReadStream(process.argv[2])
     } else {
@@ -48,6 +56,7 @@ module.exports = class Parser extends EventEmitter {
     
       // console.log(data.value)
       let packet = new Packet(data.value)
+      // this.packetEmitQueue.push(packet)
       this.packetBuffer.push(packet)
       this.emit(`packet`, packet)
       let connection = packet.getConnectionInfo()
@@ -128,7 +137,7 @@ module.exports = class Parser extends EventEmitter {
                 })
               } else {
                 // disabled because it's a bit too verbose
-                
+
                 // this.issues.push({
                 //   type: `warning`,
                 //   microseconds: connection.microseconds,
