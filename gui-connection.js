@@ -95,8 +95,8 @@ module.exports = class GuiConnection extends EventEmitter {
     if (command === undefined || payload === undefined) {
       throw new Error(`Missing command name or payload!`)
     }
-    
-    console.info(`Broadcasting`)
+
+    // console.info(`Broadcasting`)
 
     const stringifiedPayload = JSON.stringify(payload)
       

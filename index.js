@@ -156,20 +156,40 @@ function handleCommand(socketId, command) {
   
 }
 
-parser.on(`packet`, broadcastLivePacketSummary)
+parser.on(`packet`, addPacketToBroadcastQueue)
 parser.on(`new-connection`, broadcastConnections)
 parser.on(`new-advertiser`, broadcastAdvertisers)
 parser.on(`new-issue`, broadcastIssues)
 
-function broadcastLivePacketSummary(packet) {
+let packetQueue = []
+
+setInterval(() => {
+
+  // console.log(`Checking packet queue...`)
+  console.log(`packetQueue:`, packetQueue)
+  
+  if (packetQueue.length > 0) {
+    
+    broadcastPackets(packetQueue)
+    packetQueue.length = 0
+    
+  }
+  
+}, 1000)
+
+function addPacketToBroadcastQueue(packet) {
   let simplePacket = packet.getInfo()
+  packetQueue.push(simplePacket)
+}
+
+function broadcastPackets(packets) {
   connection.broadcast(`live`, {
     type: `response`,
     value: [
       `live`,
-      [simplePacket],
+      packets,
     ]
-  })
+  })  
 }
 
 function broadcastConnections(connections) {
@@ -191,6 +211,7 @@ function broadcastAdvertisers(advertisers) {
     ]
   })
 }
+
 
 function broadcastIssues(issues) {
   connection.broadcast(`issuesLive`, {
