@@ -59,6 +59,25 @@ module.exports = class Parser extends EventEmitter {
       // this.packetEmitQueue.push(packet)
       this.packetBuffer.push(packet)
       this.emit(`packet`, packet)
+
+      if (packet.info.malformed) {
+        this.issues.push({
+          type: `error`,
+          microseconds: packet.info.microseconds,
+          message: `Packet is malformed!`,
+        })
+        this.emit(`new-issue`, this.issues)
+      }
+
+      if (!packet.info.crcOk) {
+        this.issues.push({
+          type: `error`,
+          microseconds: packet.info.microseconds,
+          message: `Packet CRC isn't correct!`,
+        })
+        this.emit(`new-issue`, this.issues)
+      }
+      
       let connection = packet.getConnectionInfo()
 
       //TODO is connection detection logic working properly? compare with older commits, is there really only one actual connection?!
@@ -133,7 +152,7 @@ module.exports = class Parser extends EventEmitter {
                 this.issues.push({
                   type: `alert`,
                   microseconds: connection.microseconds,
-                  message: `[${connection.accessAddress}] Lost connection to slave!`,
+                  message: `[${connection.accessAddress}] Connection seems to be lost!`,
                 })
               } else {
                 // disabled because it's a bit too verbose

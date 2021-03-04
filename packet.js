@@ -43,12 +43,13 @@ module.exports = class Packet {
 
     return {
       malformed: this.info.malformed,
+      crcOk: this.info.crcOk,
       packetId: this.info.packetId,
       microseconds: this.info.microseconds,
       channel: this.info.channel,
       rssi: this.info.rssi,
       payload: this.info.payload,
-      isAdvertisement: this.info.isAdvertisement,
+      isAdvertisement: this.info.isPrimaryAdvertisement,
       isPartOfConnection: this.info.connection.isPartOfConnection,
       accessAddress: this.info.connection.accessAddress,
       type: this.info.type,
@@ -109,7 +110,7 @@ module.exports = class Packet {
 
   getAdvertisementInfo() {
 
-    return !this.info.isAdvertisement ? false : {
+    return !this.info.isPrimaryAdvertisement ? false : {
       advertisingAddress: this.info.advertisingAddress,
     }
     
@@ -123,6 +124,7 @@ module.exports = class Packet {
     
     let layers = originalPacket._source.layers
     let malformed
+    let crcOk
     let source = ``, destination = ``
     let type = `unknown`
     let llid = `unknown`
@@ -140,12 +142,13 @@ module.exports = class Packet {
     let microseconds
     let length
     let protocols
-    let isAdvertisement = false
+    let isPrimaryAdvertisement = false
     let isOnPrimaryAdvertisingChannel = false
     let advertisingAddress
     let connectionProperties = {}
   
     malformed = layers[`_ws.malformed`] !== undefined
+    crcOk = parseInt(layers.nordic_ble[`nordic_ble.flags_tree`][`nordic_ble.crcok`]) === 1
     channel = parseInt(layers.nordic_ble[`nordic_ble.channel`])
     isOnPrimaryAdvertisingChannel = [37, 38, 39].includes(channel)
     rssi = layers.nordic_ble[`nordic_ble.rssi`]
@@ -162,15 +165,15 @@ module.exports = class Packet {
       switch (parseInt(layers.btle[`btle.advertising_header_tree`][`btle.advertising_header.pdu_type`].slice(-2), 16)) {
         case 0:
           type = `ADV_IND`
-          isAdvertisement = true
+          isPrimaryAdvertisement = true
           break;
         case 1:
           type = `ADV_DIRECT_IND`
-          isAdvertisement = true
+          isPrimaryAdvertisement = true
           break;
         case 2:
           type = `ADV_NONCONN_IND`
-          isAdvertisement = true
+          isPrimaryAdvertisement = true
           break;
         case 3:
           type = primaryAdvertisingChannels.includes(channel) ? `SCAN_REQ` : `AUX_SCAN_REQ`
@@ -186,7 +189,7 @@ module.exports = class Packet {
           break;
         case 7:
           type = primaryAdvertisingChannels.includes(channel) ? `ADV_EXT_IND` : `AUX_ADV_IND` // or `AUX_SCAN_RSP`, `AUX_SYNC_IND`, `AUX_CHAIN_IND`
-          isAdvertisement = true
+          isPrimaryAdvertisement = true
           break;
         case 8:
           type = `AUX_CONNECT_RSP`
@@ -320,7 +323,7 @@ module.exports = class Packet {
               obj[key.replace(`nordic_ble.`, ``)] = value
               return obj
             }, {}) : undefined,
-            crc: layers.btle[`btle.crc`],
+            crcOk: parseInt(layers.nordic_ble[`nordic_ble.flags_tree`][`nordic_ble.crcok`]) === 1
           }
           break;
       
@@ -387,6 +390,7 @@ module.exports = class Packet {
   
     return {
       malformed,
+      crcOk,
       packetId,
       microseconds,
       channel,
@@ -405,7 +409,7 @@ module.exports = class Packet {
       direction,
       source,
       destination,
-      isAdvertisement,
+      isPrimaryAdvertisement,
       isOnPrimaryAdvertisingChannel,
       advertisingAddress,
       protocols,

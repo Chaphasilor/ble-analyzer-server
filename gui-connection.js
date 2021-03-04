@@ -57,7 +57,9 @@ module.exports = class GuiConnection extends EventEmitter {
     
       socket.on(`close`, (code, reason) => {
 
+        console.log(`this.sockets:`, this.sockets)
         this.sockets.delete(socketId)
+        console.log(`this.sockets:`, this.sockets)
         console.log(`Socket closed with code ${code}, reason:`, reason)
         this.emit(`close`)
 
@@ -82,7 +84,10 @@ module.exports = class GuiConnection extends EventEmitter {
     const stringifiedPayload = JSON.stringify(payload)
 
     let socket = this.sockets.get(socketId)
-    if (!socket.readyState === 1) {
+    if (!socket) {
+      throw new Error(`Socket with id '${socketId} not found!'`)
+    }
+    if (socket.readyState !== 1) {
       throw new Error(`Socket '${socketId}' isn't ready yet!`)
     }
     
@@ -105,7 +110,10 @@ module.exports = class GuiConnection extends EventEmitter {
       this.subscriptions[command].forEach(socketId => {
 
         let socket = this.sockets.get(socketId)
-        if (!socket.readyState === 1) {
+        if (!socket) {
+          throw new Error(`Socket with id '${socketId} not found!'`)
+        }
+        if (socket.readyState !== 1) {
           throw new Error(`Socket '${socketId}' isn't ready yet!`)
         }
         
