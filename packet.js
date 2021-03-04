@@ -43,11 +43,13 @@ module.exports = class Packet {
 
     return {
       malformed: this.info.malformed,
+      crcOk: this.info.crcOk,
       packetId: this.info.packetId,
       microseconds: this.info.microseconds,
       channel: this.info.channel,
       rssi: this.info.rssi,
       payload: this.info.payload,
+      isAdvertisement: this.info.isPrimaryAdvertisement,
       isPartOfConnection: this.info.connection.isPartOfConnection,
       accessAddress: this.info.connection.accessAddress,
       type: this.info.type,
@@ -56,6 +58,9 @@ module.exports = class Packet {
       destination: this.info.destination,
       protocols: this.info.protocols.map(protocol => protocol.name),
       length: this.info.length,
+      highestProtocol: [`btatt`, `btsmp`, `btl2cap`, `btle`, `nordic_ble`].find(proto => {
+        return this.info.protocols.map(x => x.shortName).includes(proto) 
+      })
     }
     
   }
@@ -64,18 +69,38 @@ module.exports = class Packet {
 
     if (this.info.connection.isBeginningOfConnection) {
       return {
-        accessAddress: this.info.connection.accessAddress,
+        accessAddress: this.info.connection.properties.accessAddress,
+        state: `start`,
         master: this.info.connection.master,
         slave: this.info.connection.slave,
-        connectionProperties: this.info.connection.connectionProperties
+        properties: this.info.connection.properties,
+        packets: 0,
+        distribution: {
+          M2S: 0,
+          S2M: 0,
+        },
+        lastPackets: {
+          M2S: this.info.microseconds,
+          S2M: this.info.microseconds,
+        },
+      }
+    }
+
+    if (this.info.connection.isEndOfConnection) {
+      return {
+        accessAddress: this.info.connection.properties.accessAddress,
+        state: `end`,
       }
     }
     
     if (this.info.connection.isPartOfConnection) {
       return {
         accessAddress: this.info.connection.accessAddress,
+        state: `active`,
         master: this.info.connection.master,
         slave: this.info.connection.slave,
+        direction: this.info.direction,
+        microseconds: this.info.microseconds,
       }
     }
     
@@ -85,7 +110,7 @@ module.exports = class Packet {
 
   getAdvertisementInfo() {
 
-    return !this.info.isAdvertisement ? false : {
+    return !this.info.isPrimaryAdvertisement ? false : {
       advertisingAddress: this.info.advertisingAddress,
     }
     
@@ -99,12 +124,16 @@ module.exports = class Packet {
     
     let layers = originalPacket._source.layers
     let malformed
+    let crcOk
     let source = ``, destination = ``
     let type = `unknown`
+    let llid = `unknown`
+    let opCode = `unknown`
     let direction = `unknown`
     let accessAddress
-    let isPartOfConnection
+    let isPartOfConnection = false
     let isBeginningOfConnection = false
+    let isEndOfConnection = false
     let master = ``, slave = ``
     let channel
     let rssi
@@ -113,12 +142,15 @@ module.exports = class Packet {
     let microseconds
     let length
     let protocols
-    let isAdvertisement = false
+    let isPrimaryAdvertisement = false
+    let isOnPrimaryAdvertisingChannel = false
     let advertisingAddress
     let connectionProperties = {}
   
     malformed = layers[`_ws.malformed`] !== undefined
+    crcOk = parseInt(layers.nordic_ble[`nordic_ble.flags_tree`][`nordic_ble.crcok`]) === 1
     channel = parseInt(layers.nordic_ble[`nordic_ble.channel`])
+    isOnPrimaryAdvertisingChannel = [37, 38, 39].includes(channel)
     rssi = layers.nordic_ble[`nordic_ble.rssi`]
     payload = layers.frame_raw[0]
     packetId = parseInt(layers.frame[`frame.number`])
@@ -126,21 +158,22 @@ module.exports = class Packet {
     length = parseInt(layers.frame[`frame.len`])
     advertisingAddress = layers.btle[`btle.advertising_address`]
   
-    //TODO make sure all advertising packets (accessAddress 0x8e89bed6 should be the standard one) are not treated as a connection
+
+
     if (layers.btle[`btle.advertising_header`]) {
   
       switch (parseInt(layers.btle[`btle.advertising_header_tree`][`btle.advertising_header.pdu_type`].slice(-2), 16)) {
         case 0:
           type = `ADV_IND`
-          isAdvertisement = true
+          isPrimaryAdvertisement = true
           break;
         case 1:
           type = `ADV_DIRECT_IND`
-          isAdvertisement = true
+          isPrimaryAdvertisement = true
           break;
         case 2:
           type = `ADV_NONCONN_IND`
-          isAdvertisement = true
+          isPrimaryAdvertisement = true
           break;
         case 3:
           type = primaryAdvertisingChannels.includes(channel) ? `SCAN_REQ` : `AUX_SCAN_REQ`
@@ -156,7 +189,7 @@ module.exports = class Packet {
           break;
         case 7:
           type = primaryAdvertisingChannels.includes(channel) ? `ADV_EXT_IND` : `AUX_ADV_IND` // or `AUX_SCAN_RSP`, `AUX_SYNC_IND`, `AUX_CHAIN_IND`
-          isAdvertisement = true
+          isPrimaryAdvertisement = true
           break;
         case 8:
           type = `AUX_CONNECT_RSP`
@@ -169,7 +202,37 @@ module.exports = class Packet {
       
     }
 
-    //FIXME check if compatible with CONNECT_IND
+    if (layers.btle[`btle.data_header`]) {
+
+      switch (parseInt(layers.btle[`btle.data_header_tree`][`btle.data_header.llid`])) {
+        case 3: // Control PDU
+          
+          llid = `Control PDU`
+        
+          switch (parseInt(layers.btle[`btle.control_opcode`])) {
+            case 2:
+              opCode = `LL_TERMINATE_IND`
+              break;
+          
+            default:
+              break;
+          }
+        
+          break;
+      
+        default:
+          break;
+      }
+
+    }
+
+    isEndOfConnection = opCode === `LL_TERMINATE_IND`
+
+    if (layers.btle[`btle.access_address`]) {
+      accessAddress = layers.btle[`btle.access_address`]
+    }
+    
+    //TODO check if compatible with CONNECT_IND
     if ([`AUX_CONNECT_REQ`].includes(type)) {
 
       master = layers.btle[`btle.initiator_address`]
@@ -188,20 +251,15 @@ module.exports = class Packet {
       // the number of connection intervals the slave is allowed to ignore if it has no data to send. < 320
       connectionProperties.slaveLatency = parseFloat(layers.btle[`btle.link_layer_data`][`btle.link_layer_data.latency`])
       // the time until a connection is considered lost. needs to be at least connection interval length + slave latency length. The timeout is 6? until the connection has been confirmed
+      // timeout length = supervisionTimeout * 10ms
       connectionProperties.supervisionTimeout = parseFloat(layers.btle[`btle.link_layer_data`][`btle.link_layer_data.timeout`])
 
       connectionProperties.channelMap = {}
       Object.entries(layers.btle[`btle.link_layer_data`][`btle.link_layer_data.channel_map_tree`]).filter(([key, value]) => !key.includes(`raw`)).forEach(([key, value]) => connectionProperties.channelMap[key.split(`.`).slice(-1)] = value === `1`)
 
-      console.log(`connectionProperties.channelMap:`, connectionProperties.channelMap)
-
       connectionProperties.channelHop = parseInt(layers.btle[`btle.link_layer_data`][`btle.link_layer_data.hop`])
       connectionProperties.sleepClockAccuracy = layers.btle[`btle.link_layer_data`][`btle.link_layer_data.sleep_clock_accuracy`]
       
-    }
-  
-    if (layers.btle[`btle.access_address`]) {
-      accessAddress = layers.btle[`btle.access_address`]
     }
   
     isPartOfConnection = accessAddress && accessAddress !== `0x8e89bed6`
@@ -244,6 +302,7 @@ module.exports = class Packet {
         case `btle`:
           return {
             name: `BT LE Link Layer`,
+            shortName: protocolName,
             length: layers.btle[`btle.length`],
             accessAddress: layers.btle[`btle.access_address`],
             header: layers.btle[`btle.advertising_header_tree`] ? Object.entries(layers.btle[`btle.advertising_header_tree`]).reduce((obj, [key, value], index) => {
@@ -257,19 +316,21 @@ module.exports = class Packet {
         case `nordic_ble`:
           return {
             name: `Nordic BLE Sniffer`,
+            shortName: protocolName,
             length: layers.nordic_ble[`nordic_ble.len`],
             boardId: layers.nordic_ble[`nordic_ble.board_id`],
             flags: layers.nordic_ble[`nordic_ble.flags_tree`] ? Object.entries(layers.nordic_ble[`nordic_ble.flags_tree`]).reduce((obj, [key, value], index) => {
               obj[key.replace(`nordic_ble.`, ``)] = value
               return obj
             }, {}) : undefined,
-            crc: layers.btle[`btle.crc`],
+            crcOk: parseInt(layers.nordic_ble[`nordic_ble.flags_tree`][`nordic_ble.crcok`]) === 1
           }
           break;
       
         case `btl2cap`:
           return {
             name: `L2CAP`,
+            shortName: protocolName,
             length: Number(layers.btl2cap[`btl2cap.length`]),
             cid: Number(layers.btl2cap[`btl2cap.cid`]),
             payload: layers.btl2cap[`btl2cap.payload`]
@@ -279,6 +340,7 @@ module.exports = class Packet {
         case `btatt`:
           return {
             name: `ATT`,
+            shortName: protocolName,
             startingHandle: layers.btatt[`btatt.starting_handle`],
             endingHandle: layers.btatt[`btatt.ending_handle`],
             opcode: layers.btatt[`btatt.opcode_tree`] ? Object.entries(layers.btatt[`btatt.opcode_tree`]).reduce((obj, [key, value], index) => {
@@ -292,6 +354,7 @@ module.exports = class Packet {
         case `btsmp`:
           return {
             name: `Security Manager`,
+            shortName: protocolName,
             opcode: layers.btsmp[`btsmp.opcode`],
             ioCapability: layers.btsmp[`btsmp.io_capability`],
             oobDataFlags: layers.btsmp[`btsmp.oob_data_flags`],
@@ -315,7 +378,8 @@ module.exports = class Packet {
   
         default:
           return {
-            name: `<unknown protocol> (${protocolName})`
+            name: `<unknown protocol> (${protocolName})`,
+            shortName: protocolName,
           }
           break;
       }
@@ -326,6 +390,7 @@ module.exports = class Packet {
   
     return {
       malformed,
+      crcOk,
       packetId,
       microseconds,
       channel,
@@ -335,16 +400,20 @@ module.exports = class Packet {
       connection: {
         isPartOfConnection,
         isBeginningOfConnection,
+        isEndOfConnection,
         accessAddress,
         master,
         slave,
-        connectionProperties,
+        properties: connectionProperties,
       },
+      direction,
       source,
       destination,
-      isAdvertisement,
+      isPrimaryAdvertisement,
+      isOnPrimaryAdvertisingChannel,
       advertisingAddress,
       protocols,
+      llid,
       length,
     }
     
