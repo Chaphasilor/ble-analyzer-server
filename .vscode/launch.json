@@ -21,7 +21,8 @@
         "<node_internals>/**"
       ],
       "program": "${workspaceFolder}\\index.js",
-      "args": ["${workspaceFolder}\\..\\capture_cypress_psoc6_crash_llid.pcapng"]
+      "args": ["${workspaceFolder}\\..\\capture_cypress_psoc6_crash_llid.pcapng"],
+      "console": "integratedTerminal"
     },
     {
       "type": "pwa-node",

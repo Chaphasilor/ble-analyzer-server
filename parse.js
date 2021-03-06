@@ -88,13 +88,13 @@ module.exports = class Parser extends EventEmitter {
 
           console.log(`++connectionStartCounter:`, ++connectionStartCounter)
 
-          console.log(`connection.properties:`, connection.properties)
+          // console.log(`connection.properties:`, connection.properties)
           
           if (this.connections.has(connection.accessAddress)) {
 
             let oldConnection = this.connections.get(connection.accessAddress)
-            console.log(`Old connection:`, oldConnection)
-            console.log(`New connection:`, connection)
+            // console.log(`Old connection:`, oldConnection)
+            // console.log(`New connection:`, connection)
 
             if (this.connections.get(connection.accessAddress).state !== `active`) {
 

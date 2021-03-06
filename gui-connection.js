@@ -58,6 +58,7 @@ module.exports = class GuiConnection extends EventEmitter {
       socket.on(`close`, (code, reason) => {
 
         console.log(`this.sockets:`, this.sockets)
+        this.unsubscribe(socketId)
         this.sockets.delete(socketId)
         console.log(`this.sockets:`, this.sockets)
         console.log(`Socket closed with code ${code}, reason:`, reason)
@@ -137,8 +138,21 @@ module.exports = class GuiConnection extends EventEmitter {
 
   unsubscribe(socketId, command) {
 
-    if (this.subscriptions[command]) {
-      this.subscriptions[command] = this.subscriptions[command].filter(x => x !== socketId)
+    // unsubscribe from all commands
+    if (!command) {
+      
+      Object.keys(this.subscriptions).forEach(command => {
+        console.log(`command:`, command)
+        console.log(`this.subscriptions:`, this.subscriptions)
+        this.subscriptions[command] = this.subscriptions[command].filter(x => x !== socketId)
+      })
+      
+    } else {
+
+      if (this.subscriptions[command]) {
+        this.subscriptions[command] = this.subscriptions[command].filter(x => x !== socketId)
+      }
+
     }
     
   }

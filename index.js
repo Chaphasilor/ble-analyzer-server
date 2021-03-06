@@ -149,6 +149,14 @@ function handleCommand(socketId, command) {
       connection.send(socketId, end())
 
       break;
+
+    case `end`:
+
+      connection.unsubscribe(socketId, command[1])
+      connection.send(socketId, response(`Success`))
+      connection.send(socketId, end())
+
+      break;
   
     default:
       break;
@@ -170,16 +178,20 @@ setInterval(() => {
   
   if (packetQueue.length > 0) {
     
-    console.log(`packetQueue:`, packetQueue)
+    // console.log(`packetQueue:`, packetQueue)
     broadcastPackets(packetQueue)
     packetQueue.length = 0
     
   }
 
+}, 50)
+
+setInterval(() => {
+
   broadcastConnections([...parser.connections.values()]) // broadcast this regularly to keep # of packets up to date
   broadcastAdvertisers([...parser.advertisers.values()]) // broadcast this regularly to keep # of packets up to date
   
-}, 50)
+}, 500)
 
 function addPacketToBroadcastQueue(packet) {
   let simplePacket = packet.getInfo()
@@ -188,54 +200,74 @@ function addPacketToBroadcastQueue(packet) {
 
 function broadcastPacket(packet) {
   let simplePacket = packet.getSimpleInfo()
-  connection.broadcast(`live`, {
-    type: `response`,
-    value: [
-      `live`,
-      [simplePacket],
-    ]
-  })
+  try {
+    connection.broadcast(`live`, {
+      type: `response`,
+      value: [
+        `live`,
+        [simplePacket],
+      ]
+    })   
+  } catch (err) {
+    console.warn(`Failed to broadcast packet:`, err)    
+  }
 }
 
 function broadcastPackets(packets) {
-  connection.broadcast(`live`, {
-    type: `response`,
-    value: [
-      `live`,
-      packets,
-    ]
-  })  
+  try {
+    connection.broadcast(`live`, {
+      type: `response`,
+      value: [
+        `live`,
+        packets,
+      ]
+    })   
+  } catch (err) {
+    console.warn(`Failed to broadcast packets:`, err)    
+  }
 }
 
 function broadcastConnections(connections) {
-  connection.broadcast(`connectionsLive`, {
-    type: `response`,
-    value: [
-      `connectionsLive`,
-      connections,
-    ]
-  })
+  try {
+    connection.broadcast(`connectionsLive`, {
+      type: `response`,
+      value: [
+        `connectionsLive`,
+        connections,
+      ]
+    })   
+  } catch (err) {
+    console.warn(`Failed to broadcast connections:`, err)    
+  }
 }
 
 function broadcastAdvertisers(advertisers) {
-  connection.broadcast(`advertisersLive`, {
-    type: `response`,
-    value: [
-      `advertisersLive`,
-      advertisers,
-    ]
-  })
+  try {
+    connection.broadcast(`advertisersLive`, {
+      type: `response`,
+      value: [
+        `advertisersLive`,
+        advertisers,
+      ]
+    })   
+  } catch (err) {
+    console.warn(`Failed to broadcast advertisers:`, err)    
+  }
 }
 
 
 function broadcastIssues(issues) {
-  connection.broadcast(`issuesLive`, {
-    type: `response`,
-    value: [
-      `issuesLive`,
-      issues,
-    ]
-  })
+  try {
+    connection.broadcast(`issuesLive`, {
+      type: `response`,
+      value: [
+        `issuesLive`,
+        issues,
+      ]
+    })   
+  } catch (err) {
+    console.warn(`Failed to broadcast issues:`, err)
+  }
 }
 
 function sendLivePacketSummary(socketId, packet) {
