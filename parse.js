@@ -64,16 +64,16 @@ module.exports = class Parser extends EventEmitter {
         this.issues.push({
           type: `error`,
           microseconds: packet.info.microseconds,
-          message: `Packet is malformed!`,
+          message: `Packet seems to be malformed!`,
         })
         this.emit(`new-issue`, this.issues)
       }
 
       if (!packet.info.crcOk) {
         this.issues.push({
-          type: `error`,
+          type: `warning`,
           microseconds: packet.info.microseconds,
-          message: `Packet CRC isn't correct!`,
+          message: `Packet CRC seems to be incorrect!`,
         })
         this.emit(`new-issue`, this.issues)
       }
@@ -96,17 +96,26 @@ module.exports = class Parser extends EventEmitter {
             // console.log(`Old connection:`, oldConnection)
             // console.log(`New connection:`, connection)
 
-            if (this.connections.get(connection.accessAddress).state !== `active`) {
+            if (oldConnection.state === `active`) {
 
               console.warn(`Beginning of connection detected even though connection is active! Adding packets...`)
 
               connection.packets += oldConnection.packets // maybe only the connection properties changed, so we want to remember all previous packets as well
+              connection.distribution.M2S += oldConnection.distribution.M2S
+              connection.distribution.S2M += oldConnection.distribution.S2M
+
+              this.issues.push({
+                type: `warning`,
+                microseconds: connection.microseconds,
+                message: `[${connection.accessAddress}] Master seems to be trying to reconnect!`,
+              })
+              this.emit(`new-issue`, this.issues)
 
             } else {
               console.warn(`Beginning of connection detected, connection exists but isn't active! Overwriting...`)
             }
 
-          } else 
+          }
 
           this.connections.set(connection.accessAddress, connection)
 
@@ -116,22 +125,30 @@ module.exports = class Parser extends EventEmitter {
 
           console.log(`++connectionEndCounter:`, ++connectionEndCounter)
 
+          // this.issues.push({
+          //   type: `end`,
+          //   microseconds: connection.microseconds,
+          //   message: `[${connection.accessAddress}] Connection seems to have ended!`,
+          // })
+          // this.emit(`new-issue`, this.issues)
+
           if (this.connections.has(connection.accessAddress)) {
 
             let existingConnection = this.connections.get(connection.accessAddress)
             existingConnection.state = connection.state
 
-            if (existingConnection.packets % 2 !== 0) {
-              this.issues.push({
-                type: `warning`,
-                microseconds: connection.microseconds,
-                message: `[${connection.accessAddress}] Odd number of connection events before end of connection!`,
-              })
-              this.emit(`new-issue`, this.issues)
-            }
+            // this only applies to frames within a connection event, which aren't exposed by Wireshark
+            // if (existingConnection.packets % 2 !== 0) {
+            //   this.issues.push({
+            //     type: `warning`,
+            //     microseconds: connection.microseconds,
+            //     message: `[${connection.accessAddress}] Odd number of connection events before end of connection!`,
+            //   })
+            //   this.emit(`new-issue`, this.issues)
+            // }
             
           } else {
-            console.error(`End of connection detected but connection doesn't exists yet! Ignoring...`)
+            console.error(`End of connection detected but connection doesn't exists yet! Ignoring...`, packet)
           }
           
         } else {
@@ -142,29 +159,33 @@ module.exports = class Parser extends EventEmitter {
 
             let activeConnection = this.connections.get(connection.accessAddress)
 
-            let timeSinceLastSlavePacket = (connection.microseconds - activeConnection.lastPackets[`S2M`])
-            // check if slave has timed out (but not necessarily lost)
-            // latency + 1 because the latency can be set to 0 to disallow skipping intervals
-            // TODO it's detecting too many issues
-            if (activeConnection.properties.connectionInterval * 1250 * (activeConnection.properties.slaveLatency + 1) < timeSinceLastSlavePacket) {
+            // check if there was a previous packet from slave at all
+            if (!isNaN(activeConnection.lastPackets[`S2M`])) {
 
-              if (activeConnection.properties.supervisionTimeout * 10000 < timeSinceLastSlavePacket) {
-                this.issues.push({
-                  type: `alert`,
-                  microseconds: connection.microseconds,
-                  message: `[${connection.accessAddress}] Connection seems to be lost!`,
-                })
-              } else {
-                // disabled because it's a bit too verbose
-
-                // this.issues.push({
-                //   type: `warning`,
-                //   microseconds: connection.microseconds,
-                //   message: `[${connection.accessAddress}] Slave has timed out!`,
-                // })
+              let timeSinceLastSlavePacket = (connection.microseconds - activeConnection.lastPackets[`S2M`])
+              // check if slave has timed out (but not necessarily lost)
+              // latency + 1 because the latency can be set to 0 to disallow skipping intervals
+              if (activeConnection.properties.connectionInterval * 1250 * (activeConnection.properties.slaveLatency + 1) < timeSinceLastSlavePacket) {
+  
+                if (activeConnection.properties.supervisionTimeout * 10000 < timeSinceLastSlavePacket) {
+                  this.issues.push({
+                    type: `alert`,
+                    microseconds: connection.microseconds,
+                    message: `[${connection.accessAddress}] Connection seems to be lost!`,
+                  })
+                } else {
+                  // disabled because it's a bit too verbose
+  
+                  // this.issues.push({
+                  //   type: `warning`,
+                  //   microseconds: connection.microseconds,
+                  //   message: `[${connection.accessAddress}] Slave has timed out!`,
+                  // })
+                }
+  
+                this.emit(`new-issue`, this.issues)
+  
               }
-
-              this.emit(`new-issue`, this.issues)
 
             }
             
@@ -176,7 +197,24 @@ module.exports = class Parser extends EventEmitter {
             // console.log(`activeConnection.packets:`, activeConnection.packets)
             
           } else {
-            console.error(`Connection packet detected but connection doesn't exist yet! Discarding...`)
+
+            console.warn(`Connection packet detected but connection doesn't exist yet! Creating connection...`)
+            console.log(`packet.info.packetId:`, packet.info.packetId)
+
+            this.issues.push({
+              type: `warning`,
+              microseconds: connection.microseconds,
+              message: `[${connection.accessAddress}] Connection packet detected, but didn't detect the beginning of the connection!`,
+            })
+            this.emit(`new-issue`, this.issues)
+            
+            //FIXME don't do this for 'stray' packets that aren't really part of the connection (check output errors in dev branch) and make sure connection end and connection start are handled well
+
+            let enrichedConnection = packet.enrichConnectionInfo(connection)
+            
+            this.connections.set(connection.accessAddress, enrichedConnection)
+            this.emit(`new-connection`, [...this.connections.values()])
+            
           }
           
         }

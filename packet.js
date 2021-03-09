@@ -52,7 +52,7 @@ module.exports = class Packet {
       isAdvertisement: this.info.isPrimaryAdvertisement,
       isPartOfConnection: this.info.connection.isPartOfConnection,
       accessAddress: this.info.connection.accessAddress,
-      type: this.info.type,
+      type: this.info.type === `unknown` ? this.info.llid : this.info.type,
       advertisingAddress: this.info.advertisingAddress,
       source: this.info.source,
       destination: this.info.destination,
@@ -68,28 +68,18 @@ module.exports = class Packet {
   getConnectionInfo() {
 
     if (this.info.connection.isBeginningOfConnection) {
-      return {
+      return this.enrichConnectionInfo({
         accessAddress: this.info.connection.properties.accessAddress,
         state: `start`,
-        master: this.info.connection.master,
-        slave: this.info.connection.slave,
-        properties: this.info.connection.properties,
-        packets: 0,
-        distribution: {
-          M2S: 0,
-          S2M: 0,
-        },
-        lastPackets: {
-          M2S: this.info.microseconds,
-          S2M: this.info.microseconds,
-        },
-      }
+        microseconds: this.info.microseconds,
+      })
     }
 
     if (this.info.connection.isEndOfConnection) {
       return {
-        accessAddress: this.info.connection.properties.accessAddress,
+        accessAddress: this.info.connection.accessAddress,
         state: `end`,
+        microseconds: this.info.microseconds,
       }
     }
     
@@ -105,6 +95,26 @@ module.exports = class Packet {
     }
     
     return false
+    
+  }
+
+  enrichConnectionInfo(connection) {
+
+    return {
+      ...connection,
+      master: this.info.connection.master,
+      slave: this.info.connection.slave,
+      properties: this.info.connection.properties,
+      packets: this.info.connection.isPartOfConnection ? 1 : 0,
+      distribution: {
+        M2S: (this.info.connection.isPartOfConnection && this.info.direction === `M2S`) ? 1 : 0,
+        S2M: (this.info.connection.isPartOfConnection && this.info.direction === `S2M`) ? 1 : 0,
+      },
+      lastPackets: {
+        M2S: this.info.connection.isPartOfConnection ? this.info.direction === `M2S` ? this.info.microseconds : NaN : this.info.microseconds,
+        S2M: this.info.connection.isPartOfConnection ? this.info.direction === `S2M` ? this.info.microseconds : NaN : this.info.microseconds,
+      },
+    }
     
   }
 
