@@ -7,7 +7,7 @@ module.exports = class Packet {
     try {
       this.info = this.getPacketInfo(originalPacket)
     } catch (err) {
-      console.error(`Error while extracting packet this.info:`, err)
+      console.error(`Error while extracting packet info:`, err)
     }
     
   }
@@ -156,6 +156,8 @@ module.exports = class Packet {
     let isOnPrimaryAdvertisingChannel = false
     let advertisingAddress
     let connectionProperties = {}
+    let advertisingData = []
+    // let scanResponseAdvertisingData = []
   
     malformed = layers[`_ws.malformed`] !== undefined
     crcOk = parseInt(layers.nordic_ble[`nordic_ble.flags_tree`][`nordic_ble.crcok`]) === 1
@@ -172,7 +174,7 @@ module.exports = class Packet {
 
     if (layers.btle[`btle.advertising_header`]) {
   
-      switch (parseInt(layers.btle[`btle.advertising_header_tree`][`btle.advertising_header.pdu_type`].slice(-2), 16)) {
+      switch (parseInt(layers.btle[`btle.advertising_header_tree`]?.[`btle.advertising_header.pdu_type`]?.slice(-2), 16)) {
         case 0:
           type = `ADV_IND`
           isPrimaryAdvertisement = true
@@ -209,6 +211,222 @@ module.exports = class Packet {
           type = `unknown`
           break;
       }
+      
+    }
+
+    let parseAdvertisingData = (bytesToParse) => {
+
+      if (!bytesToParse) {
+        return
+      }
+
+      let remainingBytes = bytesToParse
+
+      while (remainingBytes.length > 0) {
+
+        let entryLength = parseInt(`0x${remainingBytes.slice(0, 2)}`)
+        let entry = {
+          type: `0x${remainingBytes.slice(2, 4).toUpperCase()}`, // type is always two octets
+          value: `0x${remainingBytes.slice(2 + 2, (2 + 2) + entryLength*2 - 2)}`, // add offset, exclude length of type
+          length: entryLength,
+        }
+
+        // console.log(`remainingBytes:`, remainingBytes)
+        // console.log(`entry.length:`, entry.length)
+        // console.log(`entry.type:`, entry.type)
+        // console.log(`entry.value:`, entry.value)
+        
+        // data taken from https://www.bluetooth.com/specifications/assigned-numbers/generic-access-profile/
+        switch (entry.type) {
+          case `0x01`:
+            entry.name = `Flags`
+            break;
+          case `0x02`:
+            entry.name = `Incomplete List of 16-bit Service Class UUIDs`
+            break;
+          case `0x03`:
+            entry.name = `Complete List of 16-bit Service Class UUID`
+            break;
+          case `0x04`:
+            entry.name = `Incomplete List of 32-bit Service Class UUIDs`
+            break;
+          case `0x05`:
+            entry.name = `Complete List of 32-bit Service Class UUIDs`
+            break;
+          case `0x06`:
+            entry.name = `Incomplete List of 128-bit Service Class UUIDs`
+            break;
+          case `0x07`:
+            entry.name = `Complete List of 128-bit Service Class UUIDs`
+            break;
+          case `0x08`:
+            entry.name = `Shortened Local Name`
+            entry.value = hexStringToAscii(entry.value)
+            break;
+          case `0x09`:
+            entry.name = `Complete Local Name`
+            entry.value = hexStringToAscii(entry.value)
+            break;
+          case `0x0A`:
+            entry.name = `Tx Power Level`
+            break;
+          case `0x0D`:
+            entry.name = `Class of Device`
+            break;
+          case `0x0E`:
+            entry.name = `Simple Pairing Hash C`
+            break;
+          case `0x0E`:
+            entry.name = `Simple Pairing Hash C-192`
+            break;
+          case `0x0F`:
+            entry.name = `Simple Pairing Randomizer R`
+            break;
+          case `0x0F`:
+            entry.name = `Simple Pairing Randomizer R-192`
+            break;
+          case `0x10`:
+            entry.name = `Device ID`
+            break;
+          case `0x11`:
+            entry.name = `Security Manager Out of Band Flags`
+            break;
+          case `0x12`:
+            entry.name = `Slave Connection Interval Range`
+            break;
+          case `0x14`:
+            entry.name = `List of 16-bit Service Solicitation UUIDs`
+            break;
+          case `0x15`:
+            entry.name = `List of 128-bit Service Solicitation UUIDs`
+            break;
+          case `0x16`:
+            entry.name = `Service Data`
+            break;
+          case `0x16`:
+            entry.name = `Service Data - 16-bit UUID`
+            break;
+          case `0x17`:
+            entry.name = `Public Target Address`
+            break;
+          case `0x18`:
+            entry.name = `Random Target Address`
+            break;
+          case `0x19`:
+            entry.name = `Appearance`
+            break;
+          case `0x1A`:
+            entry.name = `Advertising Interval`
+            break;
+          case `0x1B`:
+            entry.name = `LE Bluetooth Device Address`
+            break;
+          case `0x1C`:
+            entry.name = `LE Role`
+            break;
+          case `0x1D`:
+            entry.name = `Simple Pairing Hash C-256`
+            break;
+          case `0x1E`:
+            entry.name = `Simple Pairing Randomizer R-256`
+            break;
+          case `0x1F`:
+            entry.name = `List of 32-bit Service Solicitation UUIDs`
+            break;
+          case `0x20`:
+            entry.name = `Service Data - 32-bit UUID`
+            break;
+          case `0x21`:
+            entry.name = `Service Data - 128-bit UUID`
+            break;
+          case `0x22`:
+            entry.name = `LE Secure Connections Confirmation Value`
+            break;
+          case `0x23`:
+            entry.name = `LE Secure Connections Random Value`
+            break;
+          case `0x24`:
+            entry.name = `URI`
+            break;
+          case `0x25`:
+            entry.name = `Indoor Positioning`
+            break;
+          case `0x26`:
+            entry.name = `Transport Discovery Data`
+            break;
+          case `0x27`:
+            entry.name = `LE Supported Features`
+            break;
+          case `0x28`:
+            entry.name = `Channel Map Update Indication`
+            break;
+          case `0x29`:
+            entry.name = `PB-ADV`
+            break;
+          case `0x2A`:
+            entry.name = `Mesh Message`
+            break;
+          case `0x2B`:
+            entry.name = `Mesh Beacon`
+            break;
+          case `0x2C`:
+            entry.name = `BIGInfo`
+            break;
+          case `0x2D`:
+            entry.name = `Broadcast_Code`
+            break;
+          case `0x3D`:
+            entry.name = `3D Information Data`
+            break;
+          case `0xFF`:
+            entry.name = `Manufacturer Specific Data`
+            break;
+        
+          default:
+            entry.name = `unknown`
+            break;
+        }
+
+        entry.name = entry.name
+        advertisingData.push(entry)
+        remainingBytes = remainingBytes.slice(2 + entryLength*2) // 2 octets for length + length* 2 octets
+        
+      }
+      
+    }
+
+    if (type === `ADV_IND`) {
+
+      parseAdvertisingData(layers.btle[`btcommon.eir_ad.advertising_data_raw`][0])
+      
+    } else if (type === `SCAN_RSP`) {
+
+      parseAdvertisingData(layers.btle[`btle.scan_responce_data_tree`]?./* typo in tshark? */[`btcommon.eir_ad.advertising_data_raw`][0])
+
+      // let advertisingEntry = layers.btle[`btle.scan_responce_data_tree`]?./* typo in tshark? */[`btcommon.eir_ad.advertising_data`]?.[`btcommon.eir_ad.entry`]
+
+      // let deviceName = advertisingEntry?.[`btcommon.eir_ad.entry.device_name`]
+
+      // if (advertisingEntry) {
+
+      //   let parsedEntry = {
+      //     type: parseInt(advertisingEntry[`btcommon.eir_ad.entry.type`]),
+      //     name: `unknown`,
+      //     value: undefined,
+      //     length: parseInt(advertisingEntry[`btcommon.eir_ad.entry.length`]),
+      //   }
+        
+      //   if (deviceName) {
+      //     parsedEntry = {
+      //       ...parsedEntry,
+      //       name: `Complete Local Name`,
+      //       value: deviceName,
+      //     }
+      //   }
+
+      //   scanResponseAdvertisingData.push(parsedEntry)
+
+      // }
       
     }
 
@@ -296,14 +514,14 @@ module.exports = class Packet {
       source = direction === `S2M` ? layers.btle[`btle.slave_bd_addr`] : layers.btle[`btle.master_bd_addr`]
       
     } else {
-      //TODO source for non-connection, non-advertising packets?
+      //TODO source for non-connection, non-advertising packets? - those shouldn't exist
     }
     
     // determine destination
     if (isPartOfConnection) {
       destination = direction === `S2M` ? layers.btle[`btle.master_bd_addr`] : layers.btle[`btle.slave_bd_addr`]
     } else {
-      //TODO destinations for non-connection packets?
+      //TODO destinations for non-connection packets? currently `undefined`, could also be set to `broadcast`
     }
   
     protocols = layers.frame[`frame.protocols`].split(`:`).filter(x => x !== `btcommon`).map(protocolName => {
@@ -396,8 +614,6 @@ module.exports = class Packet {
       
     })
   
-    //TODO prevent errors by checking if key exists
-  
     return {
       malformed,
       crcOk,
@@ -422,6 +638,7 @@ module.exports = class Packet {
       isPrimaryAdvertisement,
       isOnPrimaryAdvertisingChannel,
       advertisingAddress,
+      advertisingData,
       protocols,
       llid,
       length,
@@ -429,4 +646,11 @@ module.exports = class Packet {
     
   }
   
+}
+
+function hexStringToAscii(input) {
+  input = input.replace(`0x`, ``)
+  return input.split(``).reduce((output, curr, index) => {
+    return index % 2 === 0 ? output + String.fromCharCode(parseInt(input.slice(index, index + 2), 16)) : output
+  }, ``)
 }
