@@ -128,8 +128,6 @@ module.exports = class Packet {
 
   getPacketInfo(originalPacket) {
 
-    //TODO first determine type, then source & destination
-  
     const primaryAdvertisingChannels = [37, 38, 39]
     
     let layers = originalPacket._source.layers
@@ -460,7 +458,7 @@ module.exports = class Packet {
       accessAddress = layers.btle[`btle.access_address`]
     }
     
-    //TODO check if compatible with CONNECT_IND
+    // might also work with `CONNECT_IND` packets, but not tested
     if ([`AUX_CONNECT_REQ`].includes(type)) {
 
       master = layers.btle[`btle.initiator_address`]
@@ -514,14 +512,14 @@ module.exports = class Packet {
       source = direction === `S2M` ? layers.btle[`btle.slave_bd_addr`] : layers.btle[`btle.master_bd_addr`]
       
     } else {
-      //TODO source for non-connection, non-advertising packets? - those shouldn't exist
+      // non-connection, non-advertising packets shouldn't exist, right?
     }
     
     // determine destination
     if (isPartOfConnection) {
       destination = direction === `S2M` ? layers.btle[`btle.master_bd_addr`] : layers.btle[`btle.slave_bd_addr`]
     } else {
-      //TODO destinations for non-connection packets? currently `undefined`, could also be set to `broadcast`
+      // destination for non-connection packets is currently `undefined`, could also be set to something like `broadcast`
     }
   
     protocols = layers.frame[`frame.protocols`].split(`:`).filter(x => x !== `btcommon`).map(protocolName => {
