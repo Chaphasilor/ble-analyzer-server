@@ -54,39 +54,45 @@ module.exports = class Parser extends EventEmitter {
     this.inputStream.pipe(this.tshark.stdin)
     
     this.packetPipeline.on('data', data => {
-    
-      // console.log(data.value)
-      let packet = new Packet(data.value)
-      // this.packetEmitQueue.push(packet)
-      this.packetBuffer.push(packet)
-      this.emit(`packet`, packet)
 
-      if (packet.info.malformed) {
-        this.createIssue({
-          type: `error`,
-          microseconds: packet.info.microseconds,
-          message: `Packet seems to be malformed!`,
-        })
-      }
+      try {
+        
+        // console.log(data.value)
+        let packet = new Packet(data.value)
+        // this.packetEmitQueue.push(packet)
+        this.packetBuffer.push(packet)
+        this.emit(`packet`, packet)
 
-      if (!packet.info.crcOk) {
-        this.createIssue({
-          type: `warning`,
-          microseconds: packet.info.microseconds,
-          message: `Packet CRC seems to be incorrect!`,
-        })
-      }
-      
-      let connection = packet.getConnectionInfo()
+        if (packet.info.malformed) {
+          this.createIssue({
+            type: `error`,
+            microseconds: packet.info.microseconds,
+            message: `Packet seems to be malformed!`,
+          })
+        }
 
-      if (connection) {
-        this.handleConnectionPackets(packet, connection)
-      }
-      
-      let advertisement = packet.getAdvertisementInfo()
+        if (!packet.info.crcOk) {
+          this.createIssue({
+            type: `warning`,
+            microseconds: packet.info.microseconds,
+            message: `Packet CRC seems to be incorrect!`,
+          })
+        }
+        
+        let connection = packet.getConnectionInfo()
 
-      if (advertisement) {
-        this.handleAdvertisementPackets(packet, advertisement)
+        if (connection) {
+          this.handleConnectionPackets(packet, connection)
+        }
+        
+        let advertiser = packet.getAdvertiserInfo()
+
+        if (advertiser) {
+          this.handleAdvertisingPackets(packet, advertiser)
+        }
+
+      } catch (err) {
+        console.error(`Error while parsing packet:`, err)
       }
       
     });
@@ -244,15 +250,30 @@ module.exports = class Parser extends EventEmitter {
         
   }
 
-  handleAdvertisementPackets(packet, advertisement) {
+  handleAdvertisingPackets(packet, advertiser) {
 
-    if (this.advertisers.has(advertisement.advertisingAddress)) {
-      this.advertisers.get(advertisement.advertisingAddress).packets += 1
+    if (this.advertisers.has(advertiser.advertisingAddress)) {
+
+      let existingAdvertiser = this.advertisers.get(advertiser.advertisingAddress)
+      if (packet.info.isPrimaryAdvertisement) {
+        existingAdvertiser.packets += 1
+      }
+      if (advertiser.completeLocalName) {
+        existingAdvertiser.completeLocalName = advertiser.completeLocalName
+      }
+      if (advertiser.shortLocalName) {
+        existingAdvertiser.shortLocalName = advertiser.shortLocalName
+      }
+      
     } else {
 
-      advertisement.packets = 1;
-      this.advertisers.set(advertisement.advertisingAddress, advertisement)
-      this.emit(`new-advertiser`, [...this.advertisers.values()])
+      if (packet.info.isPrimaryAdvertisement) {
+
+        advertiser.packets = 1;
+        this.advertisers.set(advertiser.advertisingAddress, advertiser)
+        this.emit(`new-advertiser`, [...this.advertisers.values()])
+        
+      }
 
     }
     

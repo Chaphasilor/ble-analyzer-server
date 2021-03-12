@@ -127,7 +127,6 @@ function handleCommand(socketId, command) {
 
     case `advertisers`:
 
-      console.log(`parser.advertisers:`, parser.advertisers);
       connection.send(socketId, response([...parser.advertisers.values()]))
       connection.send(socketId, end())
 
@@ -144,7 +143,6 @@ function handleCommand(socketId, command) {
 
     case `issues`:
 
-      console.log(`parser.issues:`, parser.issues);
       connection.send(socketId, response(parser.issues))
       connection.send(socketId, end())
 

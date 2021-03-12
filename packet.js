@@ -118,10 +118,12 @@ module.exports = class Packet {
     
   }
 
-  getAdvertisementInfo() {
+  getAdvertiserInfo() {
 
-    return !this.info.isPrimaryAdvertisement ? false : {
+    return !(this.info.isPrimaryAdvertisement || this.info.advertisingData) ? false : {
       advertisingAddress: this.info.advertisingAddress,
+      shortLocalName: this.info.advertisingData.find(entry => entry.type === `0x08`)?.value,
+      completeLocalName: this.info.advertisingData.find(entry => entry.type === `0x09`)?.value,
     }
     
   }
