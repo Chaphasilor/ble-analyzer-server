@@ -16,6 +16,7 @@ module.exports = class GuiConnection extends EventEmitter {
 
     this.wss.on(`listening`, () => {
       console.log(`Websocket server ready and listening`)
+      this.emit(`ready`)
     })
     
     this.wss.on(`connection`, (socket, request) => {
@@ -23,7 +24,7 @@ module.exports = class GuiConnection extends EventEmitter {
       let socketId = uuid()
       socket.send(JSON.stringify(socketId))
     
-      this.emit(`ready`)
+      this.emit(`new-client`, socketId)
       this.sockets.set(socketId, socket)
       
       socket.on(`message`, (data) => {
@@ -57,7 +58,6 @@ module.exports = class GuiConnection extends EventEmitter {
     
       socket.on(`close`, (code, reason) => {
 
-        console.log(`this.sockets:`, this.sockets)
         this.unsubscribe(socketId)
         this.sockets.delete(socketId)
         console.log(`this.sockets:`, this.sockets)

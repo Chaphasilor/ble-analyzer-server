@@ -1,33 +1,50 @@
 const http = require(`http`)
-require(`dotenv`).config()
 
+require('dotenv').config(); // loads environment variables from `.env` files
+// improve logging capabilities: timestamps, log type, set log level, etc.
+const betterLogging = require(`better-logging`)
+betterLogging(console, {
+  messageConstructionStrategy: betterLogging.MessageConstructionStrategy.FIRST,
+})
+console.logLevel = process.env.environment === `development` ? 4 : 3 // level 4 includes debug logs, 2 and below include info, warn and error
+
+// import helper classes
 const PacketParser = require(`./parse`)
-const GuiConnection = require(`./gui-connection`)
-const Packet = require(`./packet`)
+const GuiConnection = require(`./gui-connection`);
 
+// create a http server to bind the websocket server to
+// the websocket server *could* create its own server, but then it can't shared a port with other http-server stuff
+// using a plain http server makes deployment easier, because we don't need to keep track of the WS port - just use the standard (http) port!
 let server = http.createServer()
 server.listen(process.env.PORT)
-let connection = new GuiConnection(server)
-let parser = new PacketParser()
+let connection = new GuiConnection(server) // initialize the GuiConnection class, which includes all WebSocket-related things
+let parser = new PacketParser() // initialize the PacketParser class, which handles converting pcap-input into parsed JS objects
 
-
+// emitted when the WebSocket server is ready to accept connections
 connection.on(`ready`, () => {
-
-  console.log(`Connection with GUI established`)
-
+  // register a handler function for messages of type `command`
   connection.on(`command`, handleCommand)
-
-  connection.on(`close`, () => {
-    console.log(`unlinking listener`)
-    connection.off(`command`, handleCommand)
-  })
-
 })
 
+// fired whenever a client connects to the websocket
+connection.on(`new-client`, (socketId) => {
+  console.info(`Connection with client GUI established!\n  ID:`, socketId)
+})
+
+/**
+ * ### Handles messages of type `command` received from clients
+ * Differentiates between all different types of commands and responds with the requested data
+ * @param {String} socketId The ID of the client/socket connection. Needed to respond to the correct client
+ * @param {Array} command The command sent by the client. Index 0 contains the name of the command, all other indices include various payloads
+ */
 function handleCommand(socketId, command) {
 
   console.log(`Received command from GUI:`, command)
 
+  /**
+   * ### Command end reply
+   * @returns a reply telling the client the command has been handled completely
+   */
   let end = () => {
     return {
       type: `commandEnd`,
@@ -37,6 +54,17 @@ function handleCommand(socketId, command) {
     }
   }
   
+  // a reply containing the data requested by the client
+  // multiple responses can be sent per command
+  // each command **has** to be finalized with an `end()` reply, once there is no more data to send
+  /**
+   * ### Command response reply
+   * 
+   * Multiple responses can be sent per command  
+   * Each command **has** to be finalized with an `end()` reply, once there is no more data to send
+   * @param {Object} payload the data requested by the client
+   * @returns a reply containing the data requested by the client
+   */
   let response = (payload) => {
     return {
       type: `response`,
@@ -47,28 +75,39 @@ function handleCommand(socketId, command) {
     }
   }
 
-  let error = (reason) => {
+  /**
+   * ### Command error reply
+   * 
+   * A reply telling the client that there has been an error while fulfilling the command  
+   * If the error is fatal, the command has to be ended by additionally sending an `end()` reply
+   * @param {String} message a message describing what went wrong
+   * @returns 
+   */
+  let error = (message) => {
     return {
       type: `error`,
       value: [
         command[0],
-        reason,
+        message,
       ]
     }
   }
 
+  // index 0 is the type/name of the command
   switch (command[0]) {
+    // sends all packets in simple format
     case `sendAll`:
 
-      console.log(`parser.packetBuffer.toArray().length:`, parser.packetBuffer.toArray().length);
       connection.send(socketId, response(parser.packetBuffer.toArray().map(packet => packet.getInfo()))) // sends all packets inside the parser.packetBuffer in simple format
       connection.send(socketId, end())
       
       break;
+    // sends a single packet. requires at least one payload (the packet id), accepts an additional payload (the packet format: `simple`, `full` or `raw`). if no format is specified it defaults to `simple`
     case `send`:
 
       if (!(command[1] >= 0)) {
         connection.send(socketId, error(`Missing packet ID while requesting specific packet!`))
+        connection.send(end())
       }
 
       let foundPacket = parser.packetBuffer.toArray().find(packet => {
@@ -77,14 +116,16 @@ function handleCommand(socketId, command) {
 
       if (foundPacket) {
 
-        console.log(`foundPacket:`, foundPacket);
+        console.debug(`foundPacket:`, foundPacket);
+        // if `command[2]` is undefined it returns the default format of `Packet.getInfo()`
         connection.send(socketId, response(foundPacket.getInfo(command[2])))
         connection.send(socketId, end())
         
       } else {
 
-        console.log(`Requested packet not found!`)
+        console.warn(`Couldn't find packet ${command[1]}, requested by client '${socketId}'!`)
         connection.send(error(`Packet with id ${command[1]} not found!`))
+        connection.send(end())
 
       }
     
