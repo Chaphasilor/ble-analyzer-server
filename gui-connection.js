@@ -31,7 +31,7 @@ module.exports = class GuiConnection extends EventEmitter {
       socket.send(JSON.stringify(socketId)) // send the id back to the client, could be useful in the future
     
       this.sockets.set(socketId, socket) // store the socket for future reference
-      this.emit(`new-client`, socketId) // notify the 'user' of the GuiConnection class about the new client connection, along with its ID
+      this.emit(`new-client`, socketId) // notify the consumer of the GuiConnection class about the new client connection, along with its ID
       
       // handle messages received from the client
       socket.on(`message`, (data) => {
@@ -65,7 +65,7 @@ module.exports = class GuiConnection extends EventEmitter {
         this.sockets.delete(socketId) // delete the reference to the socket
         console.debug(`this.sockets:`, this.sockets)
         console.warn(`Socket closed with code ${code}, reason:`, reason)
-        this.emit(`close`, socketId) // notify the 'user' of the GuiConnection class about the closed socket, including its (former) ID
+        this.emit(`close`, socketId) // notify the consumer of the GuiConnection class about the closed socket, including its (former) ID
 
       })
       
@@ -147,7 +147,7 @@ module.exports = class GuiConnection extends EventEmitter {
   /**
    * ### Subscribes a client/socket to all broadcasts for a specific command  
    *   
-   * Subscriptions are handled by the outside for now (message event -> 'user' of the GuiConnection class handles the message (command, etc.) -> calls this `subscribe()`-method)  
+   * Subscriptions are handled by the outside for now (message event -> consumer of the GuiConnection class handles the message (command, etc.) -> calls this `subscribe()`-method)  
    * This should be changed in the future to make subscription management simpler
    * @param {String} socketId The ID of the client connection
    * @param {String} command The command to subscribe the client to
@@ -167,7 +167,7 @@ module.exports = class GuiConnection extends EventEmitter {
   /**
    * ### Unsubscribes a client/socket from all broadcasts for a specific command  
    *   
-   * (Un)subscriptions are handled by the outside for now (message event -> 'user' of the GuiConnection class handles the message (command, etc.) -> calls this `unsubscribe()`-method)  
+   * (Un)subscriptions are handled by the outside for now (message event -> consumer of the GuiConnection class handles the message (command, etc.) -> calls this `unsubscribe()`-method)  
    * This should be changed in the future to make subscription management simpler
    * @param {String} socketId The ID of the client connection
    * @param {String} [command] The command to unsubscribe the client from
