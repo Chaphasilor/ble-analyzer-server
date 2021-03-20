@@ -81,7 +81,7 @@ module.exports = class GuiConnection extends EventEmitter {
   /**
    * ### Sends a reply to a client
    * Currently the payload is just forwarded to the client (after being converted to a JSON string)  
-   * This could be improved by building the actual reply inside this method and only accepting certain parameters of the reply, like the packets to be sent or the name of the command
+   * This could be improved by building the actual reply inside this method and only accepting certain parameters of the reply, like the packets to be sent or the name of the command (look at the `API.send()` method inside the frontend's API class for an example)
    * @param {String} socketId The ID of the client connection
    * @param {Object} payload The reply to be sent to the client
    */

@@ -59,7 +59,7 @@ module.exports = class Parser extends EventEmitter {
 
       try {
         
-        console.debug(data.value)
+        // console.debug(data.value)
         let packet = new Packet(data.value) // parse the raw JSON-packet into a more useful Packet-instance
         this.packetBuffer.push(packet) // save the parsed packet
         this.emit(`packet`, packet) // notify the consumer about the new packet
@@ -69,7 +69,7 @@ module.exports = class Parser extends EventEmitter {
         // create an issue of type error if this happens
         if (packet.info.malformed) {
           this.createIssue({
-            type: `error`,
+            type: `alert`,
             microseconds: packet.info.microseconds,
             message: `Packet seems to be malformed!`,
           })
@@ -229,7 +229,7 @@ module.exports = class Parser extends EventEmitter {
         // if the packet is part of a connection, the connection *should* exist...
         if (this.connections.has(connection.accessAddress)) {
 
-          console.debug(`++connectionPacketCounter:`, ++connectionPacketCounter)
+          // console.debug(`++connectionPacketCounter:`, ++connectionPacketCounter)
   
           // load the existing connection
           let existingConnection = this.connections.get(connection.accessAddress)
@@ -345,6 +345,7 @@ module.exports = class Parser extends EventEmitter {
 
   /**
    * ### Creates a new issue and re-emits all issues
+   * Includes *all* existing issues right now, causing all issues to be broadcasted to all clients anytime there's a new issue. This might have to be changed if there are a lot of issues or clients.
    * @param {Object} properties 
    * @param {Number} properties.microseconds The microseconds (epoch) when the issue occurred
    * @param {String} properties.type The type of the issue (warning, alert)

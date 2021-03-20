@@ -6,7 +6,18 @@ const betterLogging = require(`better-logging`)
 betterLogging(console, {
   messageConstructionStrategy: betterLogging.MessageConstructionStrategy.FIRST,
 })
-console.logLevel = process.env.environment === `development` ? 4 : 3 // level 4 includes debug logs, 2 and below include info, warn and error
+
+switch (process.env.environment) {
+  case `development`:
+    console.logLevel = 3 // level 3 includes regular logs and everything from level 2
+    break;
+  case `debug`:
+    console.logLevel = 4 // level 4 includes all logs, including debug
+    break;
+  default:
+    console.logLevel = 2 // level 2 and below include info, warn and error
+    break;
+}
 
 // import helper classes
 const PacketParser = require(`./parse`)

@@ -306,6 +306,28 @@ module.exports = class Packet {
         switch (entry.type) {
           case `0x01`:
             entry.name = `Flags`
+            entry.details = [
+              {
+                description: `LE Limited Discoverable Mode`,
+                supported: ((parseInt(entry.value, 16) >> 0) & 1) === 1, // bit 0
+              },
+              {
+                description: `LE General Discoverable Mode`,
+                supported: ((parseInt(entry.value, 16) >> 1) & 1) === 1, // bit 1
+              },
+              {
+                description: `BR/EDR Not Supported`,
+                supported: ((parseInt(entry.value, 16) >> 2) & 1) === 1, // bit 2,
+              },
+              {
+                description: `Simultaneous LE and BR/EDR to Same Device Capable (Controller)`,
+                supported: ((parseInt(entry.value, 16) >> 3) & 1) === 1, // bit 3,
+              },
+              {
+                description: `Simultaneous LE and BR/EDR to Same Device Capable (Host)`,
+                supported: ((parseInt(entry.value, 16) >> 4) & 1) === 1, // bit 4,
+              },
+            ]
             break;
           case `0x02`:
             entry.name = `Incomplete List of 16-bit Service Class UUIDs`
@@ -338,6 +360,7 @@ module.exports = class Packet {
             break;
           case `0x0D`:
             entry.name = `Class of Device`
+            // if anyone feels like implementing parsing for this, go ahead: https://www.bluetooth.com/specifications/assigned-numbers/baseband/
             break;
           case `0x0E`:
             entry.name = `Simple Pairing Hash C`
