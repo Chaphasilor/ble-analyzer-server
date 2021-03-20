@@ -590,6 +590,7 @@ module.exports = class Packet {
             shortName: protocolName,
             length: layers.btle[`btle.length`],
             accessAddress: layers.btle[`btle.access_address`],
+            // extract the header data to a simpler object
             header: layers.btle[`btle.advertising_header_tree`] ? Object.entries(layers.btle[`btle.advertising_header_tree`]).reduce((obj, [key, value], index) => {
               obj[key.replace(`btle.advertising_header.`, ``)] = value
               return obj
@@ -604,6 +605,7 @@ module.exports = class Packet {
             shortName: protocolName,
             length: layers.nordic_ble[`nordic_ble.len`],
             boardId: layers.nordic_ble[`nordic_ble.board_id`],
+            // extract the flags to an object
             flags: layers.nordic_ble[`nordic_ble.flags_tree`] ? Object.entries(layers.nordic_ble[`nordic_ble.flags_tree`]).reduce((obj, [key, value], index) => {
               obj[key.replace(`nordic_ble.`, ``)] = value
               return obj
@@ -628,6 +630,7 @@ module.exports = class Packet {
             shortName: protocolName,
             startingHandle: layers.btatt[`btatt.starting_handle`],
             endingHandle: layers.btatt[`btatt.ending_handle`],
+            // extract opcodes to an object
             opcode: layers.btatt[`btatt.opcode_tree`] ? Object.entries(layers.btatt[`btatt.opcode_tree`]).reduce((obj, [key, value], index) => {
               obj[key.replace(`btatt.opcode.`, ``)] = value
               return obj
@@ -643,15 +646,18 @@ module.exports = class Packet {
             opcode: layers.btsmp[`btsmp.opcode`],
             ioCapability: layers.btsmp[`btsmp.io_capability`],
             oobDataFlags: layers.btsmp[`btsmp.oob_data_flags`],
+            // extract the authentication request info into an object
             authReq: layers.btsmp[`btsmp.authreq_tree`] ? Object.entries(layers.btsmp[`btsmp.authreq_tree`]).reduce((obj, [key, value], index) => {
               obj[key.replace(`btsmp.`, ``)] = value
               return obj
             }, {}) : undefined,
             maxEncryptionKeySize: layers.btsmp[`btsmp.max_enc_key_size`],
+            // extract the initiator key distribution into an object            
             initiatorKeyDistribution: layers.btsmp[`btsmp.initiator_key_distribution_tree`] ? Object.entries(layers.btsmp[`btsmp.initiator_key_distribution_tree`]).reduce((obj, [key, value], index) => {
               obj[key.replace(`btsmp.key_dist_`, ``)] = value
               return obj
             }, {}) : undefined,
+            // extract the responder key distribution into an object              
             responderKeyDistribution: layers.btsmp[`btsmp.responder_key_distribution_tree`] ? Object.entries(layers.btsmp[`btsmp.responder_key_distribution_tree`]).reduce((obj, [key, value], index) => {
               obj[key.replace(`btsmp.key_dist_`, ``)] = value
               return obj
