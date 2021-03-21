@@ -20,7 +20,7 @@ module.exports = class GuiConnection extends EventEmitter {
     this.subscriptions = {} // stores all commands and their respective subscribe clients
 
     this.wss.on(`listening`, () => {
-      console.log(`Websocket server ready and listening`)
+      console.log(`Websocket server ready and listening on port ${process.env.PORT}`)
       this.emit(`ready`)
     })
     

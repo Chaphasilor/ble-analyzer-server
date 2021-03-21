@@ -1,7 +1,8 @@
-const StreamArray = require('stream-json/streamers/StreamArray');
-const fs = require('fs');
+const fs = require('fs')
 const { spawn } = require(`child_process`)
 const EventEmitter = require(`events`)
+const { performance } = require('perf_hooks')
+const StreamArray = require('stream-json/streamers/StreamArray')
 const CBuffer = require(`cbuffer`)
 
 const Packet = require(`./packet`)
@@ -50,6 +51,7 @@ module.exports = class Parser extends EventEmitter {
       console.error(`stderr: ${data}`)
     });
 
+    this.startTime = performance.now()
     // now that all other pipes and the handling is set up, pipe the input stream (file or stdin, in pcap(ng) format) into tshark
     this.inputStream.pipe(this.tshark.stdin)
     
@@ -110,7 +112,9 @@ module.exports = class Parser extends EventEmitter {
     // only emitted if a file is used as input, after the complete file has been parsed and `this.inputStream` closed
     this.packetPipeline.on(`close`, () => {
 
-      console.log(`Parsed all packets!`)
+      console.info(`Parsed ${this.packetBuffer.length} packets!`)
+      this.endTime = performance.now()
+      console.info(`Took ${(this.endTime - this.startTime)} miliseconds`)
       this.emit(`end`) // notify the consumer about the end of the pipeline
 
     })
@@ -139,7 +143,7 @@ module.exports = class Parser extends EventEmitter {
 
           // get the existing connection
           let existingConnection = this.connections.get(connection.accessAddress)
-          console.debug(`Old connection:`, oldConnection)
+          console.debug(`Old connection:`, existingConnection)
           console.debug(`New connection:`, connection)
 
           // check if the existing connection is active (not ended, not still in start (being set up))
@@ -162,7 +166,7 @@ module.exports = class Parser extends EventEmitter {
           } else if (existingConnection.state === `end`) {
             // handle this exactly the same as an active existing connection for now, so sum up the old packets and use the new properties
 
-            onsole.warn(`Beginning of connection detected even though there was a connection before! Adding old packets...`)
+            console.warn(`Beginning of connection detected even though there was a connection before! Adding old packets...`)
 
             connection.packets += existingConnection.packets // maybe only the connection properties changed, so we want to remember all previous packets as well
             connection.distribution.M2S += existingConnection.distribution.M2S // remember the old packet distribution
