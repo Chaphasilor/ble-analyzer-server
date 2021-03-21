@@ -12,6 +12,7 @@
   },
   "license": "GPL-3.0",
   "dependencies": {
+    "better-logging": "^4.4.1",
     "cbuffer": "^2.2.0",
     "dotenv": "^8.2.0",
     "stream-json": "^1.7.1",

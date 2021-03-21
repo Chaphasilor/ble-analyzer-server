@@ -16,12 +16,46 @@
     {
       "type": "pwa-node",
       "request": "launch",
-      "name": "Debug with dummy data",
+      "name": "Debug with general data",
       "skipFiles": [
         "<node_internals>/**"
       ],
       "program": "${workspaceFolder}\\index.js",
-      "args": ["${workspaceFolder}\\..\\capture_cypress_psoc6_crash_llid.pcapng"]
+      "args": ["${workspaceFolder}\\..\\capture_cypress_psoc6_crash_llid.pcapng"],
+      "console": "internalConsole"
+    },
+    {
+      "type": "pwa-node",
+      "request": "launch",
+      "name": "Debug with Bose QC35 data 1",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "${workspaceFolder}\\index.js",
+      "args": ["${workspaceFolder}\\..\\2021-02-26_16-09_bose-qc35.pcap"],
+      "console": "internalConsole"
+    },
+    {
+      "type": "pwa-node",
+      "request": "launch",
+      "name": "Debug with Bose QC35 data 2",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "${workspaceFolder}\\index.js",
+      "args": ["${workspaceFolder}\\..\\2021-02-26_16-13_bose-qc35.pcap"],
+      "console": "internalConsole"
+    },
+    {
+      "type": "pwa-node",
+      "request": "launch",
+      "name": "Debug with Bose QC35 data 3",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "${workspaceFolder}\\index.js",
+      "args": ["${workspaceFolder}\\..\\2021-02-26_16-16_bose-qc35.pcap"],
+      "console": "internalConsole"
     },
     {
       "type": "pwa-node",
