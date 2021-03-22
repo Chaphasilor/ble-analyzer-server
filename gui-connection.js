@@ -43,14 +43,23 @@ module.exports = class GuiConnection extends EventEmitter {
           console.error(`Failed to parse message from client:`, err);
         }
         
-        switch (parsed.type) {
-          case `command`:
-            this.emit(`command`, socketId, parsed.value)
-            break;
-        
-          default:
-            console.error(`Unrecognized message type:`, parsed.type)
-            break;
+        if (parsed && parsed.type) {
+          
+          switch (parsed.type) {
+            case `command`:
+              this.emit(`command`, socketId, parsed.value)
+              break;
+            case `keepalive`:
+              // ignore, it's just to keep the socket open 
+              break;
+          
+            default:
+              console.error(`Unrecognized message type:`, parsed.type)
+              break;
+          }
+          
+        } else {
+          console.warn(`Received malformed websocket message:`, data)
         }
         
       })
