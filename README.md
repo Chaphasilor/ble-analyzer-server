@@ -41,5 +41,5 @@ You can either:
 - Use a pipe to stream live data to the server (`node index < <stream source>` for Windows CMD, `<stream source> | node index` for Linux)
 
 After starting the server like described above, it starts listening at `ws://127.0.0.1:<PORT>`, where `<PORT>` is the port you specified in the `PORT` environment variable (e.g. in `.env`).  
-You can then paste this websocket URL (e.g. `ws://127.0.0.1:70` or ``wss://server.example.com`) into the [GUI](https://github.com/Chaphasilor/ble-analyzer-gui) (you can also use the [live demo GUI here](https://ble-analyzer-gui.netlify.app/)) to start analyzing packets.  
+You can then paste this websocket URL (e.g. `ws://127.0.0.1:70` or `wss://server.example.com`) into the [GUI](https://github.com/Chaphasilor/ble-analyzer-gui) (you can also use the [live demo GUI here](https://ble-analyzer-gui.netlify.app/)) to start analyzing packets.  
 After clicking on `Confirm URL`, you can either click on `Load Packets` to load all received packets up to now, or click `Receive Live Packets` to continously monitor incoming packets received by the server.
